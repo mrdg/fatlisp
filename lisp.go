@@ -3,8 +3,8 @@ package main
 import(
     "fmt"
     "regexp"
-    "strconv"
     "strings"
+    "strconv"
 )
 
 var leftParen  = regexp.MustCompile("\\(")
@@ -37,13 +37,17 @@ func readTokens(tokens *[]string) interface{} {
         return list
 
     } else {
-        return atom(t)
-    }
-}
+        floatVal, err := strconv.ParseFloat(t, 64)
+        if err == nil {
+            return floatVal
+        }
 
-func atom(token string) float64 {
-    ret, err := strconv.ParseFloat(token, 64)
-    if err == nil {
+        intVal, err := strconv.Atoi(t)
+        if err == nil {
+            return intVal
+        }
+
+        return t
     }
 }
 
