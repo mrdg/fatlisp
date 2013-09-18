@@ -28,6 +28,13 @@ func readTokens(tokens *[]string) interface{} {
     t := pop(tokens)
 
     if t == "(" {
+        // check the token type of the first token
+        // create the corresponding lispValue
+        // create a parse node with the new value
+        // call readTokens recursively until ")" is encountered
+        // while adding new tokens to the parse node
+
+
         list := make([]interface{}, 0)
         for (*tokens)[0] != ")" {
             list = append(list, readTokens(tokens))

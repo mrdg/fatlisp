@@ -43,10 +43,15 @@ func main() {
 
     a := lispInt{2}
     b := lispInt{3}
+    c := lispInt{5}
+    d := lispInt{6}
 
     lispAdd := lispFunc{fn: add}
 
-    args := NodeList{Node{value: a}, Node{value: b}}
+    args2 := NodeList{Node{value: c}, Node{value: d}}
+    branch := Node{value: lispAdd, children: args2}
+
+    args := NodeList{Node{value: a}, Node{value: b}, branch}
     root := Node{value: lispAdd, children: args}
 
     value := eval(root)
@@ -54,6 +59,8 @@ func main() {
 }
 
 func eval(node Node) lispValue {
+    // TODO: handle special forms
+
     if len(node.children) > 0 {
         args := make([]lispValue, len(node.children))
         for i, c := range node.children {
@@ -67,7 +74,6 @@ func eval(node Node) lispValue {
 }
 
 func add(args... lispValue) lispValue {
-    fmt.Println(args)
     returnFloat := false
     fsum := 0.0
     isum := 0
