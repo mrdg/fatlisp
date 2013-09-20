@@ -1,4 +1,4 @@
-package main
+package lisp
 
 import (
 	"fmt"
@@ -6,6 +6,10 @@ import (
     "unicode"
 	"unicode/utf8"
 )
+
+func Eval() {
+    fmt.Println("OIOIOI")
+}
 
 type item struct {
 	typ itemType
@@ -17,7 +21,6 @@ type itemType int
 const (
 	itemError itemType = iota
 	itemEOF
-    itemWhitespace
     itemStartList
     itemCloseList
     itemNumber
@@ -38,7 +41,7 @@ type lexer struct {
 	start int    // start position of this item
 	pos   int    // current position in the input
 	width int
-    nesting int
+    nesting int // the level of nested parentheses
 	items chan item
 }
 
@@ -69,7 +72,7 @@ func lex(name, input string) (*lexer, chan item) {
 }
 
 func (l *lexer) run() {
-	for state := lexWhitespace; state != nil; {
+	for state := lexTokens; state != nil; {
 		state = state(l)
 	}
 	close(l.items)
@@ -112,59 +115,28 @@ func (l *lexer) peek() rune {
     return r
 }
 
-// accept consumes the next rune
-// if it's from the valid set
-func (l *lexer) accept(valid string) bool {
-    if strings.IndexRune(valid, l.next()) >= 0 {
-        return true
-    }
-    l.backup()
-    return false
-}
-
-// acceptRun consumes a run of runes from the valid set.
-func (l *lexer) acceptRun(valid string) {
-    for strings.IndexRune(valid, l.next()) >= 0 {
-    }
-    l.backup()
-}
-
 func (l *lexer) errorf(format string, args ...interface{}) stateFn {
     fmt.Printf(format, args...)
     return nil
-}
-
-func lexWhitespace(l *lexer) stateFn {
-    for {
-        if strings.HasPrefix(l.input[l.pos:], startList) {
-            // Check if substring of input is non-empty.
-            if l.pos > l.start {
-                l.ignore()
-            }
-            return lexStartList // Next state.
-        }
-        if l.next() == eof { break }
-    }
-    // Reached EOF.
-    if l.pos > l.start {
-        l.ignore()
-    }
-    l.emit(itemEOF)
-    return nil // Stop the run loop.
 }
 
 func lexStartList(l* lexer) stateFn {
     l.pos += len(startList)
     l.emit(itemStartList)
     l.nesting++
-    return lexInsideList
+    return lexTokens
 }
 
-func lexInsideList(l *lexer) stateFn {
+func lexTokens(l *lexer) stateFn {
     for {
         switch r := l.next(); {
         case r == eof:
-            return l.errorf("unmatched parenthesis")
+            if l.nesting > 0 {
+                return l.errorf("unmatched parenthesis")
+            } else {
+                l.emit(itemEOF)
+                return nil
+            }
         case isSpace(r):
             l.ignore()
         case r == '+' || r == '-':
@@ -185,6 +157,7 @@ func lexInsideList(l *lexer) stateFn {
             l.backup()
             return lexCloseList
         case utf8.ValidRune(r):
+            l.backup()
             return lexIdentifier
         }
     }
@@ -195,17 +168,15 @@ func lexCloseList(l *lexer) stateFn {
     l.pos += len(closeList)
     l.emit(itemCloseList)
     l.nesting--
-    if l.nesting == 0 {
-        return lexWhitespace
-    } else {
-        return lexInsideList
-    }
+    return lexTokens
 }
 
 func lexNumber(l *lexer) stateFn {
-    l.acceptRun("+-.0123456789")
+    for strings.IndexRune("+-.0123456789", l.next()) >= 0 {
+    }
+    l.backup()
     l.emit(itemNumber)
-    return lexInsideList
+    return lexTokens
 }
 
 func lexIdentifier(l *lexer) stateFn {
@@ -218,7 +189,7 @@ func lexIdentifier(l *lexer) stateFn {
     }
 
     l.emit(itemIdentifier)
-    return lexInsideList
+    return lexTokens
 }
 
 func lexString(l *lexer) stateFn {
@@ -233,20 +204,14 @@ func lexString(l *lexer) stateFn {
         }
     }
     l.emit(itemString)
-    return lexInsideList
+    return lexTokens
 }
 
-// isSpace reports whether r is a space character.
 func isSpace(r rune) bool {
 	return r == ' ' || r == '\t'
 }
 
-// isAlphaNumeric reports whether r is an alphabetic, digit, or underscore.
-func isAlphaNumeric(r rune) bool {
-	return r == '_' || unicode.IsLetter(r) || unicode.IsDigit(r)
-}
-
 func main() {
-    lexer, _ := lex("test", `(1 "foo" (set x 2))`)
+    lexer, _ := lex("test", `lol 3 (1 "foo" (set x 2)) 3.43209324`)
     lexer.run()
 }
