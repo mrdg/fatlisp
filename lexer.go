@@ -21,6 +21,8 @@ const (
     itemStartList
     itemCloseList
     itemNumber
+    itemIdentifier
+    itemString
 )
 
 const (
@@ -36,6 +38,7 @@ type lexer struct {
 	start int    // start position of this item
 	pos   int    // current position in the input
 	width int
+    nesting int
 	items chan item
 }
 
@@ -58,6 +61,7 @@ func lex(name, input string) (*lexer, chan item) {
 	l := &lexer{
 		name:  name,
 		input: input,
+        nesting: 0,
 		items: make(chan item),
 	}
 	go l.run()
@@ -152,15 +156,12 @@ func lexWhitespace(l *lexer) stateFn {
 func lexStartList(l* lexer) stateFn {
     l.pos += len(startList)
     l.emit(itemStartList)
-    return lexInsideList // Now inside a list. TODO: write lexInsideList
+    l.nesting++
+    return lexInsideList
 }
 
 func lexInsideList(l *lexer) stateFn {
-    // lexNumber, lexIdentifier, lexString
     for {
-        if strings.HasPrefix(l.input[l.pos:], closeList) {
-            return lexCloseList
-        }
         switch r := l.next(); {
         case r == eof:
             return l.errorf("unmatched parenthesis")
@@ -170,23 +171,69 @@ func lexInsideList(l *lexer) stateFn {
             if unicode.IsDigit(l.peek()) {
                 return lexNumber
             }
+            fallthrough
         case unicode.IsDigit(r):
+            l.backup()
             return lexNumber
+        case r == '"':
+            l.backup()
+            return lexString
+        case r == '(':
+            l.backup()
+            return lexStartList
+        case r == ')':
+            l.backup()
+            return lexCloseList
+        case utf8.ValidRune(r):
+            return lexIdentifier
         }
     }
     return nil
 }
 
+func lexCloseList(l *lexer) stateFn {
+    l.pos += len(closeList)
+    l.emit(itemCloseList)
+    l.nesting--
+    if l.nesting == 0 {
+        return lexWhitespace
+    } else {
+        return lexInsideList
+    }
+}
+
 func lexNumber(l *lexer) stateFn {
-    l.acceptRun("+-0123456789")
+    l.acceptRun("+-.0123456789")
     l.emit(itemNumber)
     return lexInsideList
 }
 
-func lexCloseList(l *lexer) stateFn {
-    l.pos += len(closeList)
-    l.emit(itemCloseList)
-    return nil
+func lexIdentifier(l *lexer) stateFn {
+    for {
+        r := l.next()
+        if isSpace(r) || r == '(' || r == ')' || r == '"' || !utf8.ValidRune(r) {
+            l.backup()
+            break
+        }
+    }
+
+    l.emit(itemIdentifier)
+    return lexInsideList
+}
+
+func lexString(l *lexer) stateFn {
+    l.next() // accept the first quote
+    for {
+        r := l.next()
+        if r == '"' {
+            break
+        }
+        if r == eof {
+            return l.errorf("unexpected end of file")
+        }
+    }
+    l.emit(itemString)
+    return lexInsideList
 }
 
 // isSpace reports whether r is a space character.
@@ -200,6 +247,6 @@ func isAlphaNumeric(r rune) bool {
 }
 
 func main() {
-    lexer, _ := lex("test", "(  11  123409 30934)")
+    lexer, _ := lex("test", `(1 "foo" (set x 2))`)
     lexer.run()
 }
