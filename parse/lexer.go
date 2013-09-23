@@ -1,4 +1,4 @@
-package lisp
+package parse
 
 import (
 	"fmt"
@@ -6,10 +6,6 @@ import (
     "unicode"
 	"unicode/utf8"
 )
-
-func Eval() {
-    fmt.Println("OIOIOI")
-}
 
 type item struct {
 	typ itemType
@@ -60,7 +56,7 @@ func (i item) String() string {
 	return fmt.Sprintf("%q", i.val)
 }
 
-func lex(name, input string) (*lexer, chan item) {
+func Lex(name, input string) *lexer {
 	l := &lexer{
 		name:  name,
 		input: input,
@@ -68,7 +64,11 @@ func lex(name, input string) (*lexer, chan item) {
 		items: make(chan item),
 	}
 	go l.run()
-	return l, l.items
+	return l
+}
+
+func (l *lexer) NextToken() item {
+    return <-l.items
 }
 
 func (l *lexer) run() {
@@ -79,8 +79,8 @@ func (l *lexer) run() {
 }
 
 func (l *lexer) emit(t itemType) {
-	// l.items <- item{t, l.input[l.start:l.pos]}
-    fmt.Println(item{t, l.input[l.start:l.pos]})
+	l.items <- item{t, l.input[l.start:l.pos]}
+    // fmt.Println(item{t, l.input[l.start:l.pos]})
 	l.start = l.pos
 }
 
@@ -129,6 +129,7 @@ func lexStartList(l* lexer) stateFn {
 
 func lexTokens(l *lexer) stateFn {
     for {
+        // fmt.Println(string(l.peek()))
         switch r := l.next(); {
         case r == eof:
             if l.nesting > 0 {
@@ -137,13 +138,17 @@ func lexTokens(l *lexer) stateFn {
                 l.emit(itemEOF)
                 return nil
             }
+            fallthrough
         case isSpace(r):
             l.ignore()
         case r == '+' || r == '-':
             if unicode.IsDigit(l.peek()) {
+                l.backup()
                 return lexNumber
+            } else {
+                l.backup()
+                return lexIdentifier
             }
-            fallthrough
         case unicode.IsDigit(r):
             l.backup()
             return lexNumber
@@ -156,9 +161,13 @@ func lexTokens(l *lexer) stateFn {
         case r == ')':
             l.backup()
             return lexCloseList
-        case utf8.ValidRune(r):
+        default:
             l.backup()
-            return lexIdentifier
+            if utf8.ValidRune(r) {
+                return lexIdentifier
+            } else {
+                l.ignore()
+            }
         }
     }
     return nil
@@ -211,7 +220,3 @@ func isSpace(r rune) bool {
 	return r == ' ' || r == '\t'
 }
 
-func main() {
-    lexer, _ := lex("test", `lol 3 (1 "foo" (set x 2)) 3.43209324`)
-    lexer.run()
-}
