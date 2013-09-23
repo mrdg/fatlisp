@@ -1,10 +1,10 @@
 package main
 
 import (
-	// "fmt"
+	"fmt"
 	"github.com/mrdg/lisp/parse"
 )
 
 func main() {
-	parse.Parse("+ 1 1")
+	fmt.Println(parse.Parse("+ 1 1"))
 }

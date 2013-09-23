@@ -5,103 +5,108 @@ import (
     "strconv"
 )
 
-type Value interface {}
+type Type int
 
-type lispFloat struct {
-    value float64
-}
+const (
+    intType Type = iota
+    floatType
+    stringType
+    listType
+    idType
+)
 
-type lispInt struct {
-    value int64
-}
-
-type lispString struct {
-    value string
-}
-
-type Identifier struct {
-    value string
-}
-
-type lispFunc struct {
-    fn func(args... Value) Value
+type Value struct {
+    typ Type
+    data interface{}
 }
 
 type List struct {
-    values []Value
+    values *[]Value
 }
 
-func newList(values ...Value) List {
-    return List{values: values}
+func (list *Value) push(val Value) {
+    l := (*list).data.(List)
+    *l.values = append(*l.values, val)
 }
 
-func (l *List) push(vals ...Value) {
-    l.values = append(l.values, vals...)
+func newList(vals ...Value) Value {
+    slice := make([]Value, len(vals))
+    for i, v := range(vals) {
+        slice[i] = v
+    }
+    return Value{typ: listType, data: List{values: &slice}}
 }
 
-func last(l List) Value {
-    i := len(l.values)
-    return l.values[i - 1]
+func newInt(i int64) Value {
+    return Value{typ: intType, data: i}
 }
 
-
-func (l lispFunc) call(args... Value) Value {
-    return l.fn(args...)
+func newFloat(f float64) Value {
+    return Value{typ: floatType, data: f}
 }
+
 
 func Parse(s string) Value {
-    lexer := Lex("test.lisp", "(+ 1 2 3)")
-    stack := []List{}
-    stack = append(stack, newList{})
+    lexer := Lex("test.lisp", "(+ 1 2 3 (+ 2 2 (* 3 4)))")
+    stack := []*Value{}
+    root := newList()
+    stack = append(stack, &root)
 
     item := lexer.NextToken()
     for item.typ != itemEOF {
         switch item.typ {
         case itemStartList:
+            current := stack[len(stack) - 1]
+            list := newList()
+            current.push(list)
+            stack = append(stack, &list)
 
         case itemCloseList:
+            stack = stack[:len(stack) - 1]
 
         case itemIdentifier:
+            current := stack[len(stack) - 1]
+            current.push(Value{typ: idType, data: item.val})
 
         case itemNumber:
+            current := stack[len(stack) - 1]
+            current.push(parseNumber(item.val))
         }
 
         item = lexer.NextToken()
     }
-    fmt.Println(stack[0])
-
-    return stack
-
+    return *(stack[0])
 }
-
 
 func parseNumber(s string) Value {
     i, err := strconv.ParseInt(s, 10, 64)
     if err != nil {
         f, err := strconv.ParseFloat(s, 32)
         if err != nil {
-            return lispFloat{f}
+            return newFloat(f)
         }
     }
-    return lispInt{i}
+    return newInt(i)
 }
-func (l List) String() string {
-    str := "("
-    for i, item := range(l.values) {
-            switch item.(type) {
-            case int:
-                if i == len(l.values) - 1 {
-                    str += fmt.Sprintf("%d)", item.(int))
-                } else {
-                    str += fmt.Sprintf("%d ", item.(int))
-                }
-            case List:
-                if i == len(l.values) - 1 {
-                    str += item.(List).String() + ")"
-                } else {
-                    str += item.(List).String() + " "
-                }
+
+func (v Value) String() string {
+    switch v.typ {
+    case intType:
+        return fmt.Sprintf("%d", v.data.(int64))
+    case idType:
+        return v.data.(string)
+    case listType:
+        str := "("
+        list := v.data.(List)
+        for i, val := range(*list.values) {
+            str += val.String()
+            if i != len(*list.values) - 1 {
+                str += " "
             }
+        }
+        str += ")"
+        return str
+    default:
+        return v.String()
     }
-    return str
 }
