@@ -13,6 +13,8 @@ const (
     stringType
     listType
     idType
+    fnType
+    nilType
 )
 
 type Value struct {
@@ -22,6 +24,12 @@ type Value struct {
 
 type List struct {
     values *[]Value
+}
+
+type Fn func(args ...Value) Value
+
+func newFn(fn Fn) Value {
+    return Value{typ: fnType, data: fn}
 }
 
 func (list *Value) push(val Value) {
@@ -45,9 +53,8 @@ func newFloat(f float64) Value {
     return Value{typ: floatType, data: f}
 }
 
-
 func Parse(s string) Value {
-    lexer := Lex("test.lisp", "(+ 1 2 3 (+ 2 2 (* 3 4)))")
+    lexer := Lex("test.lisp", s)
     stack := []*Value{}
     root := newList()
     stack = append(stack, &root)
@@ -75,15 +82,18 @@ func Parse(s string) Value {
 
         item = lexer.NextToken()
     }
-    return *(stack[0])
+    thing := *(stack[0])
+    return thing
 }
 
 func parseNumber(s string) Value {
     i, err := strconv.ParseInt(s, 10, 64)
     if err != nil {
-        f, err := strconv.ParseFloat(s, 32)
-        if err != nil {
+        f, err := strconv.ParseFloat(s, 64)
+        if err == nil {
             return newFloat(f)
+        } else {
+            panic("Invalid number syntax")
         }
     }
     return newInt(i)
@@ -93,6 +103,8 @@ func (v Value) String() string {
     switch v.typ {
     case intType:
         return fmt.Sprintf("%d", v.data.(int64))
+    case floatType:
+        return fmt.Sprintf("%v", v.data.(float64))
     case idType:
         return v.data.(string)
     case listType:
@@ -106,6 +118,8 @@ func (v Value) String() string {
         }
         str += ")"
         return str
+    case nilType:
+        return "nil"
     default:
         return v.String()
     }

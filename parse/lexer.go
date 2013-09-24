@@ -80,7 +80,6 @@ func (l *lexer) run() {
 
 func (l *lexer) emit(t itemType) {
 	l.items <- item{t, l.input[l.start:l.pos]}
-    // fmt.Println(item{t, l.input[l.start:l.pos]})
 	l.start = l.pos
 }
 
@@ -129,7 +128,6 @@ func lexStartList(l* lexer) stateFn {
 
 func lexTokens(l *lexer) stateFn {
     for {
-        // fmt.Println(string(l.peek()))
         switch r := l.next(); {
         case r == eof:
             if l.nesting > 0 {
@@ -138,8 +136,7 @@ func lexTokens(l *lexer) stateFn {
                 l.emit(itemEOF)
                 return nil
             }
-            fallthrough
-        case isSpace(r):
+        case isSpace(r) || r == '\n':
             l.ignore()
         case r == '+' || r == '-':
             if unicode.IsDigit(l.peek()) {
@@ -152,8 +149,6 @@ func lexTokens(l *lexer) stateFn {
         case unicode.IsDigit(r):
             l.backup()
             return lexNumber
-        case r == '"':
-            l.backup()
             return lexString
         case r == '(':
             l.backup()
