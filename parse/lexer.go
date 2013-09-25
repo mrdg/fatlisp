@@ -2,8 +2,8 @@ package parse
 
 import (
 	"fmt"
-    "strings"
-    "unicode"
+	"strings"
+	"unicode"
 	"unicode/utf8"
 )
 
@@ -17,28 +17,28 @@ type itemType int
 const (
 	itemError itemType = iota
 	itemEOF
-    itemStartList
-    itemCloseList
-    itemNumber
-    itemIdentifier
-    itemString
+	itemStartList
+	itemCloseList
+	itemNumber
+	itemIdentifier
+	itemString
 )
 
 const (
-    startList string = "("
-    closeList string = ")"
+	startList string = "("
+	closeList string = ")"
 )
 
 const eof = 1
 
 type lexer struct {
-	name  string
-	input string // the string being scanned
-	start int    // start position of this item
-	pos   int    // current position in the input
-	width int
-    nesting int // the level of nested parentheses
-	items chan item
+	name    string
+	input   string // the string being scanned
+	start   int    // start position of this item
+	pos     int    // current position in the input
+	width   int
+	nesting int // the level of nested parentheses
+	items   chan item
 }
 
 type stateFn func(*lexer) stateFn
@@ -58,17 +58,17 @@ func (i item) String() string {
 
 func Lex(name, input string) *lexer {
 	l := &lexer{
-		name:  name,
-		input: input,
-        nesting: 0,
-		items: make(chan item),
+		name:    name,
+		input:   input,
+		nesting: 0,
+		items:   make(chan item),
 	}
 	go l.run()
 	return l
 }
 
 func (l *lexer) NextToken() item {
-    return <-l.items
+	return <-l.items
 }
 
 func (l *lexer) run() {
@@ -90,128 +90,127 @@ func (l *lexer) next() rune {
 		return eof
 	}
 	r, w := utf8.DecodeRuneInString(l.input[l.pos:])
-    l.width = w
+	l.width = w
 	l.pos += l.width
 	return r
 }
 
 // ignore skips over the pending input before this point.
 func (l *lexer) ignore() {
-    l.start = l.pos
+	l.start = l.pos
 }
 
 // backup steps back one rune.
 // Can be called only once per call of next.
 func (l *lexer) backup() {
-    l.pos -= l.width
+	l.pos -= l.width
 }
 
 // peek returns but does not consume
 // the next rune in the input
 func (l *lexer) peek() rune {
-    r := l.next()
-    l.backup()
-    return r
+	r := l.next()
+	l.backup()
+	return r
 }
 
 func (l *lexer) errorf(format string, args ...interface{}) stateFn {
-    fmt.Printf(format, args...)
-    return nil
+	fmt.Printf(format, args...)
+	return nil
 }
 
-func lexStartList(l* lexer) stateFn {
-    l.pos += len(startList)
-    l.emit(itemStartList)
-    l.nesting++
-    return lexTokens
+func lexStartList(l *lexer) stateFn {
+	l.pos += len(startList)
+	l.emit(itemStartList)
+	l.nesting++
+	return lexTokens
 }
 
 func lexTokens(l *lexer) stateFn {
-    for {
-        switch r := l.next(); {
-        case r == eof:
-            if l.nesting > 0 {
-                return l.errorf("unmatched parenthesis")
-            } else {
-                l.emit(itemEOF)
-                return nil
-            }
-        case isSpace(r) || r == '\n':
-            l.ignore()
-        case r == '+' || r == '-':
-            if unicode.IsDigit(l.peek()) {
-                l.backup()
-                return lexNumber
-            } else {
-                l.backup()
-                return lexIdentifier
-            }
-        case unicode.IsDigit(r):
-            l.backup()
-            return lexNumber
-            return lexString
-        case r == '(':
-            l.backup()
-            return lexStartList
-        case r == ')':
-            l.backup()
-            return lexCloseList
-        default:
-            l.backup()
-            if utf8.ValidRune(r) {
-                return lexIdentifier
-            } else {
-                l.ignore()
-            }
-        }
-    }
-    return nil
+	for {
+		switch r := l.next(); {
+		case r == eof:
+			if l.nesting > 0 {
+				return l.errorf("unmatched parenthesis")
+			} else {
+				l.emit(itemEOF)
+				return nil
+			}
+		case isSpace(r) || r == '\n':
+			l.ignore()
+		case r == '+' || r == '-':
+			if unicode.IsDigit(l.peek()) {
+				l.backup()
+				return lexNumber
+			} else {
+				l.backup()
+				return lexIdentifier
+			}
+		case unicode.IsDigit(r):
+			l.backup()
+			return lexNumber
+			return lexString
+		case r == '(':
+			l.backup()
+			return lexStartList
+		case r == ')':
+			l.backup()
+			return lexCloseList
+		default:
+			l.backup()
+			if utf8.ValidRune(r) {
+				return lexIdentifier
+			} else {
+				l.ignore()
+			}
+		}
+	}
+	return nil
 }
 
 func lexCloseList(l *lexer) stateFn {
-    l.pos += len(closeList)
-    l.emit(itemCloseList)
-    l.nesting--
-    return lexTokens
+	l.pos += len(closeList)
+	l.emit(itemCloseList)
+	l.nesting--
+	return lexTokens
 }
 
 func lexNumber(l *lexer) stateFn {
-    for strings.IndexRune("+-.0123456789", l.next()) >= 0 {
-    }
-    l.backup()
-    l.emit(itemNumber)
-    return lexTokens
+	for strings.IndexRune("+-.0123456789", l.next()) >= 0 {
+	}
+	l.backup()
+	l.emit(itemNumber)
+	return lexTokens
 }
 
 func lexIdentifier(l *lexer) stateFn {
-    for {
-        r := l.next()
-        if isSpace(r) || r == '(' || r == ')' || r == '"' || !utf8.ValidRune(r) {
-            l.backup()
-            break
-        }
-    }
+	for {
+		r := l.next()
+		if isSpace(r) || r == '(' || r == ')' || r == '"' || !utf8.ValidRune(r) {
+			l.backup()
+			break
+		}
+	}
 
-    l.emit(itemIdentifier)
-    return lexTokens
+	l.emit(itemIdentifier)
+	return lexTokens
 }
 
 func lexString(l *lexer) stateFn {
-    l.next() // accept the first quote
-    for {
-        r := l.next()
-        if r == '"' {
-            break
-        }
-        if r == eof {
-            return l.errorf("unexpected end of file")
-        }
-    }
-    l.emit(itemString)
-    return lexTokens
+	l.next() // accept the first quote
+	for {
+		r := l.next()
+		if r == '"' {
+			break
+		}
+		if r == eof {
+			return l.errorf("unexpected end of file")
+		}
+	}
+	l.emit(itemString)
+	return lexTokens
 }
 
 func isSpace(r rune) bool {
 	return r == ' ' || r == '\t'
 }
-
