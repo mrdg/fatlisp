@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"github.com/mrdg/lisp/parse"
+	"io/ioutil"
 )
 
 func main() {

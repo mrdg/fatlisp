@@ -2,15 +2,19 @@ package parse
 
 import (
 	"fmt"
-	"strconv"
 	"os"
+	"strconv"
 	"strings"
 )
 
 type Tree struct {
-	name string
-	input string
-	lex *lexer
+	name  string // Name of the parsed file.
+	input string // Source string
+	lex   *lexer
+
+	// Used to keep track of open lists while parsing tokens.
+	stack []*Value
+	currentList *Value
 }
 
 type Type int
@@ -35,36 +39,34 @@ type List struct {
 }
 
 func NewTree(name, input string) Tree {
+	root := newList()
+
 	return Tree{
-		name: name,
+		name:  name,
 		input: input,
-		lex: Lex(name, input),
+		lex:   Lex(name, input),
+		stack: []*Value{&root},
+		currentList: &root,
 	}
 }
 
 func (tree Tree) Parse(s string) Value {
-	root := newList()
-	stack := []*Value{&root}
-
 	item := tree.lex.NextToken()
 	for item.typ != itemEOF {
 		switch item.typ {
 		case itemStartList:
-			current := stack[len(stack)-1]
 			list := newList()
-			current.push(list)
-			stack = append(stack, &list)
+			tree.currentList.push(list)
+			tree.pushList(&list)
 
 		case itemCloseList:
-			stack = stack[:len(stack)-1]
+			tree.popList()
 
 		case itemIdentifier:
-			current := stack[len(stack)-1]
-			current.push(Value{typ: idType, data: item.val})
+			tree.currentList.push(Value{typ: idType, data: item.val})
 
 		case itemNumber:
-			current := stack[len(stack)-1]
-			current.push(parseNumber(item.val))
+			tree.currentList.push(parseNumber(item.val))
 
 		case itemError:
 			fmt.Printf("Error: %s - %s\n", tree.errorPos(item), item.val)
@@ -73,7 +75,32 @@ func (tree Tree) Parse(s string) Value {
 
 		item = tree.lex.NextToken()
 	}
-	return *(stack[0])
+	return *(tree.stack[0])
+}
+
+func (tree *Tree) pushList(list *Value) {
+	tree.stack = append(tree.stack, list)
+	tree.currentList = list
+}
+
+func (tree *Tree) popList() {
+	tree.stack = tree.stack[:len(tree.stack)-1]
+	tree.currentList = tree.stack[len(tree.stack)-1]
+}
+
+func (tree Tree) errorPos(i item) string {
+	pos := i.pos + 1 // i.pos is zero indexed, so add 1
+	str := tree.input[:pos]
+	lines := 1 + strings.Count(str, "\n")
+	lastLine := strings.LastIndex(str, "\n")
+	var col int
+	if lastLine == -1 {
+		col = pos
+	} else {
+		col = pos - (lastLine + 1)
+	}
+
+	return fmt.Sprintf("%s:%d:%d", tree.name, lines, col)
 }
 
 func (list *Value) push(val Value) {
@@ -110,21 +137,6 @@ func vtoi(v Value) int64 {
 
 func vtof(v Value) float64 {
 	return v.data.(float64)
-}
-
-func (tree Tree) errorPos(i item) string {
-	pos := i.pos + 1 // i.pos is zero indexed, so add 1
-	str := tree.input[:pos]
-	lines := 1 + strings.Count(str, "\n")
-	lastLine := strings.LastIndex(str, "\n")
-	var col int
-	if lastLine == -1 {
-		col = pos
-	} else {
-		col = pos - (lastLine + 1)
-	}
-
-	return fmt.Sprintf("%s:%d:%d", tree.name, lines, col)
 }
 
 func parseNumber(s string) Value {
