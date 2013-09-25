@@ -68,6 +68,9 @@ func (tree Tree) Parse(s string) Value {
 		case itemNumber:
 			tree.currentList.push(parseNumber(item.val))
 
+		case itemString:
+			tree.currentList.push(parseString(item.val))
+
 		case itemError:
 			fmt.Printf("Error: %s - %s\n", tree.errorPos(item), item.val)
 			os.Exit(-1)
@@ -139,6 +142,13 @@ func vtof(v Value) float64 {
 	return v.data.(float64)
 }
 
+func parseString(s string) Value {
+	// Strip of quotes that are included in the token.
+	s = s[1:]
+	s = s[:len(s)-1]
+	return Value{typ: stringType, data: s}
+}
+
 func parseNumber(s string) Value {
 	i, err := strconv.ParseInt(s, 10, 64)
 	if err != nil {
@@ -154,6 +164,8 @@ func parseNumber(s string) Value {
 
 func (v Value) String() string {
 	switch v.typ {
+	case stringType:
+		return v.data.(string)
 	case intType:
 		return fmt.Sprintf("%d", vtoi(v))
 	case floatType:

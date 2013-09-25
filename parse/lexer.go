@@ -150,6 +150,7 @@ func lexTokens(l *lexer) stateFn {
 		case unicode.IsDigit(r):
 			l.backup()
 			return lexNumber
+		case r == '"':
 			return lexString
 		case r == '(':
 			l.backup()
