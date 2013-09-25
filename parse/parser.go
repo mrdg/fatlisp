@@ -53,14 +53,27 @@ func newFloat(f float64) Value {
     return Value{typ: floatType, data: f}
 }
 
+func vtos(v Value) []Value {
+    list := v.data.(List)
+    return *list.values
+}
+
+func vtoi(v Value) int64 {
+    return v.data.(int64)
+}
+
+func vtof(v Value) float64 {
+    return v.data.(float64)
+}
+
 func Parse(s string) Value {
     lexer := Lex("test.lisp", s)
-    stack := []*Value{}
     root := newList()
-    stack = append(stack, &root)
+    stack := []*Value{&root}
 
     item := lexer.NextToken()
     for item.typ != itemEOF {
+
         switch item.typ {
         case itemStartList:
             current := stack[len(stack) - 1]
@@ -82,8 +95,7 @@ func Parse(s string) Value {
 
         item = lexer.NextToken()
     }
-    thing := *(stack[0])
-    return thing
+    return *(stack[0])
 }
 
 func parseNumber(s string) Value {
@@ -102,9 +114,9 @@ func parseNumber(s string) Value {
 func (v Value) String() string {
     switch v.typ {
     case intType:
-        return fmt.Sprintf("%d", v.data.(int64))
+        return fmt.Sprintf("%d", vtoi(v))
     case floatType:
-        return fmt.Sprintf("%v", v.data.(float64))
+        return fmt.Sprintf("%v", vtof(v))
     case idType:
         return v.data.(string)
     case listType:

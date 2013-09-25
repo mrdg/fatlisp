@@ -26,18 +26,13 @@ func (e Env) get(id string) Value {
     return v
 }
 
-func valueToSlice(v Value) []Value {
-    list := v.data.(List)
-    return *list.values
-}
-
 func Eval(root Value) []Value {
     global := newEnv()
     global.set("+", newFn(add))
     global.set("puts", newFn(puts))
 
     results := []Value{}
-    for _, v := range valueToSlice(root) {
+    for _, v := range vtos(root) {
         results = append(results, eval(v, global))
     }
     return results
@@ -46,7 +41,7 @@ func Eval(root Value) []Value {
 func eval(v Value, e *Env) Value {
     switch v.typ {
     case listType:
-        list := valueToSlice(v)
+        list := vtos(v)
         id := list[0].data.(string)
         list = list[1:]
 
@@ -73,14 +68,14 @@ func puts(vals ...Value) Value {
 
 func add(vals ...Value) Value {
     var sum int64 = 0
-    for _, n := range vals {
-        switch t := n.data.(type) {
-        case float64:
+    for _, v := range vals {
+        switch v.typ {
+        case floatType:
             return sumFloats(vals...)
-        case int64:
-            sum += n.data.(int64)
+        case intType:
+            sum += vtoi(v)
         default:
-            panic(fmt.Sprintf("+: Unexpected type %T", t))
+            panic(fmt.Sprintf("+: Unexpected type %T", v.typ))
         }
     }
     return newInt(sum)
@@ -90,10 +85,10 @@ func sumFloats(vals ...Value) Value {
     sum := 0.0
     for _, v := range vals {
         if v.typ == intType {
-            sum += float64(v.data.(int64))
+            sum += float64(vtoi(v))
         } else {
-            sum += v.data.(float64)
+            sum += vtof(v)
         }
     }
-    return newFloat(float64(sum))
+    return newFloat(sum)
 }
