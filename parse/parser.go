@@ -13,7 +13,7 @@ type Tree struct {
 	lex   *lexer
 
 	// Used to keep track of open lists while parsing tokens.
-	stack []*Value
+	stack       []*Value
 	currentList *Value
 }
 
@@ -42,10 +42,10 @@ func NewTree(name, input string) Tree {
 	root := newList()
 
 	return Tree{
-		name:  name,
-		input: input,
-		lex:   Lex(name, input),
-		stack: []*Value{&root},
+		name:        name,
+		input:       input,
+		lex:         Lex(name, input),
+		stack:       []*Value{&root},
 		currentList: &root,
 	}
 }
@@ -75,7 +75,7 @@ func (tree Tree) Parse(s string) Value {
 
 		item = tree.lex.NextToken()
 	}
-	return *(tree.stack[0])
+	return *tree.currentList
 }
 
 func (tree *Tree) pushList(list *Value) {
