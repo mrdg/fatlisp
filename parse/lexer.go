@@ -132,7 +132,7 @@ func lexTokens(l *lexer) stateFn {
 		switch r := l.next(); {
 		case r == eof:
 			if l.nesting > 0 {
-				return l.errorf("unmatched parenthesis")
+				return l.errorf("Unexpected EOF")
 			} else {
 				l.emit(itemEOF)
 				return nil

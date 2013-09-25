@@ -89,18 +89,18 @@ func (tree *Tree) popList() {
 }
 
 func (tree Tree) errorPos(i item) string {
-	pos := i.pos + 1 // i.pos is zero indexed, so add 1
-	str := tree.input[:pos]
-	lines := 1 + strings.Count(str, "\n")
+	str := tree.input[:i.pos-1]
 	lastLine := strings.LastIndex(str, "\n")
+
 	var col int
 	if lastLine == -1 {
-		col = pos
+		col = i.pos
 	} else {
-		col = pos - (lastLine + 1)
+		col = i.pos - (lastLine + 1)
 	}
 
-	return fmt.Sprintf("%s:%d:%d", tree.name, lines, col)
+	lineNum := 1 + strings.Count(str, "\n")
+	return fmt.Sprintf("%s:%d:%d", tree.name, lineNum, col)
 }
 
 func (list *Value) push(val Value) {
