@@ -40,17 +40,18 @@ func Eval(root Value) []Value {
 
 func eval(v Value, e *Env) Value {
 	switch v.typ {
+	case idType:
+		id := v.data.(string)
+		return e.get(id)
 	case listType:
 		list := vtos(v)
-		id := list[0].data.(string)
-		list = list[1:]
-
 		args := make([]Value, len(list))
 		for i, c := range list {
 			args[i] = eval(c, e)
 		}
+		fn := args[0].data.(Fn)
+		args = args[1:] // Pop of the function
 
-		fn := e.get(id).data.(Fn)
 		return fn(args...)
 	default:
 		return v
