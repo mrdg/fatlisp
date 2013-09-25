@@ -42,6 +42,40 @@ func NewTree(name, input string) Tree {
 	}
 }
 
+func (tree Tree) Parse(s string) Value {
+	root := newList()
+	stack := []*Value{&root}
+
+	item := tree.lex.NextToken()
+	for item.typ != itemEOF {
+		switch item.typ {
+		case itemStartList:
+			current := stack[len(stack)-1]
+			list := newList()
+			current.push(list)
+			stack = append(stack, &list)
+
+		case itemCloseList:
+			stack = stack[:len(stack)-1]
+
+		case itemIdentifier:
+			current := stack[len(stack)-1]
+			current.push(Value{typ: idType, data: item.val})
+
+		case itemNumber:
+			current := stack[len(stack)-1]
+			current.push(parseNumber(item.val))
+
+		case itemError:
+			fmt.Printf("Error: %s - %s\n", tree.errorPos(item), item.val)
+			os.Exit(-1)
+		}
+
+		item = tree.lex.NextToken()
+	}
+	return *(stack[0])
+}
+
 func (list *Value) push(val Value) {
 	l := (*list).data.(List)
 	*l.values = append(*l.values, val)
@@ -76,41 +110,6 @@ func vtoi(v Value) int64 {
 
 func vtof(v Value) float64 {
 	return v.data.(float64)
-}
-
-func (tree Tree) Parse(s string) Value {
-	lexer := Lex("test.lisp", s)
-	root := newList()
-	stack := []*Value{&root}
-
-	item := lexer.NextToken()
-	for item.typ != itemEOF {
-		switch item.typ {
-		case itemStartList:
-			current := stack[len(stack)-1]
-			list := newList()
-			current.push(list)
-			stack = append(stack, &list)
-
-		case itemCloseList:
-			stack = stack[:len(stack)-1]
-
-		case itemIdentifier:
-			current := stack[len(stack)-1]
-			current.push(Value{typ: idType, data: item.val})
-
-		case itemNumber:
-			current := stack[len(stack)-1]
-			current.push(parseNumber(item.val))
-
-		case itemError:
-			fmt.Printf("Error: %s - %s\n", tree.errorPos(item), item.val)
-			os.Exit(-1)
-		}
-
-		item = lexer.NextToken()
-	}
-	return *(stack[0])
 }
 
 func (tree Tree) errorPos(i item) string {
