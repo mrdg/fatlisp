@@ -50,7 +50,7 @@ func eval(v Value, e *Env) Value {
 			args[i] = eval(c, e)
 		}
 
-		fn := (*e).get(id).data.(Fn)
+		fn := e.get(id).data.(Fn)
 		return fn(args...)
 	default:
 		return v
