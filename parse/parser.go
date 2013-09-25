@@ -3,7 +3,15 @@ package parse
 import (
 	"fmt"
 	"strconv"
+	"os"
+	"strings"
 )
+
+type Tree struct {
+	name string
+	input string
+	lex *lexer
+}
 
 type Type int
 
@@ -24,6 +32,14 @@ type Value struct {
 
 type List struct {
 	values *[]Value
+}
+
+func NewTree(name, input string) Tree {
+	return Tree{
+		name: name,
+		input: input,
+		lex: Lex(name, input),
+	}
 }
 
 func (list *Value) push(val Value) {
@@ -62,14 +78,13 @@ func vtof(v Value) float64 {
 	return v.data.(float64)
 }
 
-func Parse(s string) Value {
+func (tree Tree) Parse(s string) Value {
 	lexer := Lex("test.lisp", s)
 	root := newList()
 	stack := []*Value{&root}
 
 	item := lexer.NextToken()
 	for item.typ != itemEOF {
-
 		switch item.typ {
 		case itemStartList:
 			current := stack[len(stack)-1]
@@ -87,11 +102,30 @@ func Parse(s string) Value {
 		case itemNumber:
 			current := stack[len(stack)-1]
 			current.push(parseNumber(item.val))
+
+		case itemError:
+			fmt.Printf("Error: %s - %s\n", tree.errorPos(item), item.val)
+			os.Exit(-1)
 		}
 
 		item = lexer.NextToken()
 	}
 	return *(stack[0])
+}
+
+func (tree Tree) errorPos(i item) string {
+	pos := i.pos + 1 // i.pos is zero indexed, so add 1
+	str := tree.input[:pos]
+	lines := 1 + strings.Count(str, "\n")
+	lastLine := strings.LastIndex(str, "\n")
+	var col int
+	if lastLine == -1 {
+		col = pos
+	} else {
+		col = pos - (lastLine + 1)
+	}
+
+	return fmt.Sprintf("%s:%d:%d", tree.name, lines, col)
 }
 
 func parseNumber(s string) Value {

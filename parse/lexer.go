@@ -9,6 +9,7 @@ import (
 
 type item struct {
 	typ itemType
+	pos int
 	val string
 }
 
@@ -79,7 +80,7 @@ func (l *lexer) run() {
 }
 
 func (l *lexer) emit(t itemType) {
-	l.items <- item{t, l.input[l.start:l.pos]}
+	l.items <- item{t, l.start, l.input[l.start:l.pos]}
 	l.start = l.pos
 }
 
@@ -115,7 +116,7 @@ func (l *lexer) peek() rune {
 }
 
 func (l *lexer) errorf(format string, args ...interface{}) stateFn {
-	fmt.Printf(format, args...)
+	l.items <- item{itemError, l.start, fmt.Sprintf(format, args...)}
 	return nil
 }
 
@@ -179,6 +180,13 @@ func lexNumber(l *lexer) stateFn {
 	for strings.IndexRune("+-.0123456789", l.next()) >= 0 {
 	}
 	l.backup()
+
+	// Consider number invalid if it ends with anything
+	// but a space, ( or )
+	r := l.peek()
+	if !isSpace(r) && r != '(' && r != ')' {
+		return l.errorf("Invalid number")
+	}
 	l.emit(itemNumber)
 	return lexTokens
 }

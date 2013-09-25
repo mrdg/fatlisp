@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
-	"github.com/mrdg/lisp/parse"
 	"io/ioutil"
+	"github.com/mrdg/lisp/parse"
 )
 
 func main() {
@@ -11,7 +11,8 @@ func main() {
 	if err != nil {
 		fmt.Println(err)
 	} else {
-		v := parse.Parse(string(src))
-		parse.Eval(v)
+		tree := parse.NewTree("test.clj", string(src))
+		nodes := tree.Parse(string(src))
+		parse.Eval(nodes)
 	}
 }
