@@ -75,7 +75,7 @@ func add(vals ...Value) Value {
 		case intType:
 			sum += vtoi(v)
 		default:
-			panic(fmt.Sprintf("+: Unexpected type %T", v.typ))
+			panic(fmt.Sprintf("+: Unexpected %s", v))
 		}
 	}
 	return newInt(sum)
@@ -84,10 +84,13 @@ func add(vals ...Value) Value {
 func sumFloats(vals ...Value) Value {
 	sum := 0.0
 	for _, v := range vals {
-		if v.typ == intType {
+		switch v.typ {
+		case intType:
 			sum += float64(vtoi(v))
-		} else {
+		case floatType:
 			sum += vtof(v)
+		default:
+			panic(fmt.Sprintf("+: Unexpected  %s", v))
 		}
 	}
 	return newFloat(sum)
