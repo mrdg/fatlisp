@@ -38,11 +38,7 @@ func (list *Value) push(val Value) {
 }
 
 func newList(vals ...Value) Value {
-    slice := make([]Value, len(vals))
-    for i, v := range(vals) {
-        slice[i] = v
-    }
-    return Value{typ: listType, data: List{values: &slice}}
+    return Value{typ: listType, data: List{values: &vals}}
 }
 
 func newInt(i int64) Value {
