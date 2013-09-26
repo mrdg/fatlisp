@@ -86,6 +86,8 @@ func specialForm(v Value) (func(env *Env, args ...Value) Value, bool) {
 		return def, true
 	case "fn":
 		return fn, true
+	case "if":
+		return ifForm, true
 	default:
 		return nil, false
 	}
@@ -112,6 +114,32 @@ func def(e *Env, args ...Value) Value {
 	val := eval(args[2], e)
 	e.set(name, val)
 	return args[1]
+}
+
+func ifForm(e *Env, args ...Value) Value {
+	args = args[1:]
+	expectArgCount("if", args, 3)
+
+	cond := args[0]
+	ifClause := args[1]
+	elseClause := args[2]
+
+	if truthy(eval(cond, e)) {
+		return eval(ifClause, e)
+	} else {
+		return eval(elseClause, e)
+	}
+}
+
+func truthy(v Value) bool {
+	if v.typ == nilType {
+		return false
+	}
+	if v.typ == boolType && !vtob(v) {
+		return false
+	}
+
+	return true
 }
 
 func puts(vals ...Value) Value {

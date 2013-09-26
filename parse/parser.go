@@ -27,6 +27,7 @@ const (
 	idType
 	fnType
 	nilType
+	boolType
 )
 
 type Value struct {
@@ -63,7 +64,7 @@ func (tree Tree) Parse(s string) Value {
 			tree.popList()
 
 		case itemIdentifier:
-			tree.currentList.push(Value{typ: idType, data: item.val})
+			tree.currentList.push(parseIdentifier(item.val))
 
 		case itemNumber:
 			tree.currentList.push(parseNumber(item.val))
@@ -142,11 +143,28 @@ func vtof(v Value) float64 {
 	return v.data.(float64)
 }
 
+func vtob(v Value) bool {
+	return v.data.(bool)
+}
+
 func parseString(s string) Value {
 	// Strip of quotes that are included in the token.
 	s = s[1:]
 	s = s[:len(s)-1]
 	return Value{typ: stringType, data: s}
+}
+
+func parseIdentifier(s string) Value {
+	if s == "true" {
+		return Value{typ: boolType, data: true}
+	}
+	if s == "false" {
+		return Value{typ: boolType, data: false}
+	}
+	if s == "nil" {
+		return Value{typ: nilType, data: nil}
+	}
+	return Value{typ: idType, data: s}
 }
 
 func parseNumber(s string) Value {
@@ -185,6 +203,8 @@ func (v Value) String() string {
 		return str
 	case nilType:
 		return "nil"
+	case boolType:
+		return fmt.Sprintf("%v", vtob(v))
 	default:
 		return v.String()
 	}
@@ -207,6 +227,8 @@ func (t Type) String() string {
 		s = "Fn"
 	case nilType:
 		s = "Nil"
+	case boolType:
+		s = "Bool"
 	}
 	return s
 }
