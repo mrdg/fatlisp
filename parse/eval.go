@@ -82,6 +82,8 @@ func eval(v Value, e *Env) Value {
 func specialForm(v Value) (func(env *Env, args ...Value) Value, bool) {
 	name := v.data.(string)
 	switch name {
+	case "def":
+		return def, true
 	case "fn":
 		return fn, true
 	default:
@@ -103,6 +105,13 @@ func fn(e *Env, vals ...Value) Value {
 		expectArgCount("function", args, argc)
 		return eval(body, newFunctionEnv(e, params, args))
 	})
+}
+
+func def(e *Env, args ...Value) Value {
+	name := args[1].data.(string)
+	val := eval(args[2], e)
+	e.set(name, val)
+	return args[1]
 }
 
 func puts(vals ...Value) Value {
