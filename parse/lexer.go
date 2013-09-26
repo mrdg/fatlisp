@@ -137,7 +137,7 @@ func lexTokens(l *lexer) stateFn {
 				l.emit(itemEOF)
 				return nil
 			}
-		case isSpace(r) || r == '\n':
+		case isSpace(r):
 			l.ignore()
 		case r == '+' || r == '-':
 			if unicode.IsDigit(l.peek()) {
@@ -221,5 +221,5 @@ func lexString(l *lexer) stateFn {
 }
 
 func isSpace(r rune) bool {
-	return r == ' ' || r == '\t'
+	return r == ' ' || r == '\t' || r == '\n'
 }
