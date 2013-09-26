@@ -11,6 +11,19 @@ func newEnv() *Env {
 	return &Env{defs: make(map[string]Value, 1)}
 }
 
+// Construct a new function scope based on parent scope.
+func newFunctionEnv(parent *Env, params Value, args []Value) *Env {
+	env := newEnv()
+	env.parent = parent
+
+	for i, p := range *(params.data.(List).values) {
+		name := p.data.(string)
+		value := args[i]
+		env.set(name, value)
+	}
+	return env
+}
+
 func (e *Env) set(key string, v Value) {
 	(*e).defs[key] = v
 }
@@ -46,6 +59,14 @@ func eval(v Value, e *Env) Value {
 	case listType:
 		list := vtos(v)
 		args := make([]Value, len(list))
+
+		if list[0].typ == idType {
+			form, ok := specialForm(list[0])
+			if ok {
+				return form(e, list...)
+			}
+		}
+
 		for i, c := range list {
 			args[i] = eval(c, e)
 		}
@@ -56,6 +77,32 @@ func eval(v Value, e *Env) Value {
 	default:
 		return v
 	}
+}
+
+func specialForm(v Value) (func(env *Env, args ...Value) Value, bool) {
+	name := v.data.(string)
+	switch name {
+	case "fn":
+		return fn, true
+	default:
+		return nil, false
+	}
+}
+
+func fn(e *Env, vals ...Value) Value {
+	vals = vals[1:] // Pop off fn keyword
+	expectArgCount("fn", vals, 2)
+
+	params := vals[0]
+	body := vals[1]
+
+	expectArg("fn", vals, 0, listType)
+
+	return newFn(func(args ...Value) Value {
+		argc := len(vtos(params))
+		expectArgCount("function", args, argc)
+		return eval(body, newFunctionEnv(e, params, args))
+	})
 }
 
 func puts(vals ...Value) Value {
@@ -95,4 +142,25 @@ func sumFloats(vals ...Value) Value {
 		}
 	}
 	return newFloat(sum)
+}
+
+func expectArgCount(name string, args []Value, expect int) {
+	if len(args) != expect {
+		arguments := "argument"
+		if expect != 1 {
+			arguments += "s"
+		}
+
+		err := fmt.Sprintf("Error: %s expects %d %s. Got %d.",
+			name, expect, arguments, len(args))
+		panic(err)
+	}
+}
+
+func expectArg(name string, args []Value, index int, expect Type) {
+	if args[index].typ != expect {
+		err := fmt.Sprintf("Error: argument %d of %s should be of type %s.",
+			index+1, name, expect)
+		panic(err)
+	}
 }

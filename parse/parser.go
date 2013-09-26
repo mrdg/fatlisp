@@ -189,3 +189,24 @@ func (v Value) String() string {
 		return v.String()
 	}
 }
+
+func (t Type) String() string {
+	var s string
+	switch t {
+	case intType:
+		s = "Int"
+	case floatType:
+		s = "Float"
+	case stringType:
+		s = "String"
+	case idType:
+		s = "Identifier"
+	case listType:
+		s = "List"
+	case fnType:
+		s = "Fn"
+	case nilType:
+		s = "Nil"
+	}
+	return s
+}
