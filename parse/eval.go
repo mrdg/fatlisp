@@ -25,7 +25,7 @@ func newFunctionEnv(parent *Env, params Value, args []Value) *Env {
 }
 
 func (e *Env) set(key string, v Value) {
-	(*e).defs[key] = v
+	e.defs[key] = v
 }
 
 func (e Env) get(id string) Value {

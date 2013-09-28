@@ -108,7 +108,7 @@ func (tree Tree) errorPos(i item) string {
 }
 
 func (list *Value) push(val Value) {
-	l := (*list).data.(List)
+	l := list.data.(List)
 	*l.values = append(*l.values, val)
 }
 
