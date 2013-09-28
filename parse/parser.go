@@ -15,6 +15,10 @@ type Tree struct {
 	// Used to keep track of open lists while parsing tokens.
 	stack       []*Value
 	currentList *Value
+
+	// Contains all quotes encountered during parsing. After
+	// parsing quotes will be expanded. e.g. '(1 2 3) -> (quote (1 2 3))
+	quotes []Quote
 }
 
 type Type int
@@ -37,6 +41,16 @@ type Value struct {
 
 type List struct {
 	values *[]Value
+}
+
+// Represents quotes found in the lexer stream.  Their location in the tree
+// (list + index) is stored.  After the entire tree is parsed, the element in
+// list on index is replaced with (quote element). 'id' is the identifier that
+// becomes the first element in the list the quote expands to.
+type Quote struct {
+	list  *Value
+	index int
+	id    string
 }
 
 func NewTree(name, input string) Tree {
@@ -75,11 +89,26 @@ func (tree Tree) Parse() Value {
 		case itemError:
 			fmt.Printf("Error: %s - %s\n", tree.errorPos(item), item.val)
 			os.Exit(-1)
+
+		case itemQuote:
+			i := len(vtos(*tree.currentList))
+			q := Quote{list: tree.currentList, index: i, id: "quote"}
+			tree.quotes = append(tree.quotes, q)
 		}
 
 		item = tree.lex.NextToken()
 	}
+	tree.expandQuotes()
 	return *tree.currentList
+}
+
+func (tree *Tree) expandQuotes() {
+	for _, q := range tree.quotes {
+		list := newList()
+		list.push(Value{typ: idType, data: q.id})
+		list.push(q.list.get(q.index))
+		q.list.replace(q.index, list)
+	}
 }
 
 func (tree *Tree) pushList(list *Value) {
@@ -110,6 +139,16 @@ func (tree Tree) errorPos(i item) string {
 func (list *Value) push(val Value) {
 	l := list.data.(List)
 	*l.values = append(*l.values, val)
+}
+
+func (list *Value) replace(index int, val Value) {
+	l := list.data.(List)
+	(*l.values)[index] = val
+}
+
+func (list Value) get(index int) Value {
+	l := list.data.(List)
+	return (*l.values)[index]
 }
 
 func newList(vals ...Value) Value {
@@ -151,6 +190,7 @@ func parseString(s string) Value {
 	// Strip of quotes that are included in the token.
 	s = s[1:]
 	s = s[:len(s)-1]
+
 	return Value{typ: stringType, data: s}
 }
 
@@ -205,6 +245,8 @@ func (v Value) String() string {
 		return "nil"
 	case boolType:
 		return fmt.Sprintf("%v", vtob(v))
+	case fnType:
+		return fmt.Sprintf("<fn>")
 	default:
 		return v.String()
 	}

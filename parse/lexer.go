@@ -23,6 +23,7 @@ const (
 	itemNumber
 	itemIdentifier
 	itemString
+	itemQuote
 )
 
 const (
@@ -158,6 +159,8 @@ func lexTokens(l *lexer) stateFn {
 		case r == ')':
 			l.backup()
 			return lexCloseList
+		case r == '\'':
+			l.emit(itemQuote)
 		default:
 			l.backup()
 			if utf8.ValidRune(r) {

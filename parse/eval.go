@@ -88,9 +88,15 @@ func specialForm(v Value) (func(env *Env, args ...Value) Value, bool) {
 		return fn, true
 	case "if":
 		return ifForm, true
+	case "quote":
+		return quote, true
 	default:
 		return nil, false
 	}
+}
+
+func quote(e *Env, vals ...Value) Value {
+	return vals[1]
 }
 
 func fn(e *Env, vals ...Value) Value {
