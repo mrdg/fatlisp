@@ -51,7 +51,7 @@ func NewTree(name, input string) Tree {
 	}
 }
 
-func (tree Tree) Parse(s string) Value {
+func (tree Tree) Parse() Value {
 	item := tree.lex.NextToken()
 	for item.typ != itemEOF {
 		switch item.typ {

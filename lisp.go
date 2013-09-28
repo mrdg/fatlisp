@@ -12,7 +12,7 @@ func main() {
 		fmt.Println(err)
 	} else {
 		tree := parse.NewTree("test.clj", string(src))
-		nodes := tree.Parse(string(src))
+		nodes := tree.Parse()
 		parse.Eval(nodes)
 	}
 }
