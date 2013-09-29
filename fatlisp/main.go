@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/mrdg/lisp/parse"
+	"github.com/mrdg/fatlisp"
 	"io/ioutil"
 )
 
@@ -11,8 +11,8 @@ func main() {
 	if err != nil {
 		fmt.Println(err)
 	} else {
-		tree := parse.NewTree("test.clj", string(src))
+		tree := fatlisp.NewTree("test.clj", string(src))
 		nodes := tree.Parse()
-		parse.Eval(nodes)
+		fatlisp.Eval(nodes)
 	}
 }
