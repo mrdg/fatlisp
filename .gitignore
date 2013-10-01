@@ -1,2 +1,2 @@
-lisp
-test.clj
+fatlisp
+fatlisp/test.clj
