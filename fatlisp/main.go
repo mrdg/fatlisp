@@ -22,9 +22,8 @@ func main() {
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 	} else {
-		tree := fatlisp.NewTree(file, string(src))
-		nodes := tree.Parse()
-		fatlisp.Eval(nodes)
+		tree := fatlisp.Parse(file, string(src))
+		fatlisp.Eval(tree)
 
 	}
 }

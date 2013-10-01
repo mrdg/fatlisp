@@ -53,7 +53,7 @@ type Quote struct {
 	id    string
 }
 
-func NewTree(name, input string) Tree {
+func newTree(name, input string) Tree {
 	root := newList()
 
 	return Tree{
@@ -65,7 +65,12 @@ func NewTree(name, input string) Tree {
 	}
 }
 
-func (tree Tree) Parse() Value {
+func Parse(name, input string) Value {
+	tree := newTree(name, input)
+	return tree.parse()
+}
+
+func (tree Tree) parse() Value {
 	item := tree.lex.NextToken()
 	for item.typ != itemEOF {
 		switch item.typ {
