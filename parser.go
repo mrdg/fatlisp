@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-type Tree struct {
+type parser struct {
 	name  string // Name of the parsed file.
 	input string // Source string
 	lex   *lexer
@@ -53,10 +53,10 @@ type Quote struct {
 	id    string
 }
 
-func newTree(name, input string) Tree {
+func newParser(name, input string) parser {
 	root := newList()
 
-	return Tree{
+	return parser{
 		name:        name,
 		input:       input,
 		lex:         Lex(name, input),
@@ -66,49 +66,49 @@ func newTree(name, input string) Tree {
 }
 
 func Parse(name, input string) Value {
-	tree := newTree(name, input)
-	return tree.parse()
+	p := newParser(name, input)
+	return p.parse()
 }
 
-func (tree Tree) parse() Value {
-	item := tree.lex.NextToken()
+func (p parser) parse() Value {
+	item := p.lex.NextToken()
 	for item.typ != itemEOF {
 		switch item.typ {
 		case itemStartList:
 			list := newList()
-			tree.currentList.push(list)
-			tree.pushList(&list)
+			p.currentList.push(list)
+			p.pushList(&list)
 
 		case itemCloseList:
-			tree.popList()
+			p.popList()
 
 		case itemIdentifier:
-			tree.currentList.push(parseIdentifier(item.val))
+			p.currentList.push(parseIdentifier(item.val))
 
 		case itemNumber:
-			tree.currentList.push(parseNumber(item.val))
+			p.currentList.push(parseNumber(item.val))
 
 		case itemString:
-			tree.currentList.push(parseString(item.val))
+			p.currentList.push(parseString(item.val))
 
 		case itemError:
-			fmt.Printf("Error: %s - %s\n", tree.errorPos(item), item.val)
+			fmt.Printf("Error: %s - %s\n", p.errorPos(item), item.val)
 			os.Exit(-1)
 
 		case itemQuote:
-			i := len(vtos(*tree.currentList))
-			q := Quote{list: tree.currentList, index: i, id: "quote"}
-			tree.quotes = append(tree.quotes, q)
+			i := len(vtos(*p.currentList))
+			q := Quote{list: p.currentList, index: i, id: "quote"}
+			p.quotes = append(p.quotes, q)
 		}
 
-		item = tree.lex.NextToken()
+		item = p.lex.NextToken()
 	}
-	tree.expandQuotes()
-	return *tree.currentList
+	p.expandQuotes()
+	return *p.currentList
 }
 
-func (tree *Tree) expandQuotes() {
-	for _, q := range tree.quotes {
+func (p *parser) expandQuotes() {
+	for _, q := range p.quotes {
 		list := newList()
 		list.push(Value{typ: idType, data: q.id})
 		list.push(q.list.get(q.index))
@@ -116,18 +116,18 @@ func (tree *Tree) expandQuotes() {
 	}
 }
 
-func (tree *Tree) pushList(list *Value) {
-	tree.stack = append(tree.stack, list)
-	tree.currentList = list
+func (p *parser) pushList(list *Value) {
+	p.stack = append(p.stack, list)
+	p.currentList = list
 }
 
-func (tree *Tree) popList() {
-	tree.stack = tree.stack[:len(tree.stack)-1]
-	tree.currentList = tree.stack[len(tree.stack)-1]
+func (p *parser) popList() {
+	p.stack = p.stack[:len(p.stack)-1]
+	p.currentList = p.stack[len(p.stack)-1]
 }
 
-func (tree Tree) errorPos(i item) string {
-	str := tree.input[:i.pos-1]
+func (p parser) errorPos(i item) string {
+	str := p.input[:i.pos-1]
 	lastLine := strings.LastIndex(str, "\n")
 
 	var col int
@@ -138,7 +138,7 @@ func (tree Tree) errorPos(i item) string {
 	}
 
 	lineNum := 1 + strings.Count(str, "\n")
-	return fmt.Sprintf("%s:%d:%d", tree.name, lineNum, col)
+	return fmt.Sprintf("%s:%d:%d", p.name, lineNum, col)
 }
 
 func (list *Value) push(val Value) {
