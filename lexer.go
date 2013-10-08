@@ -216,7 +216,7 @@ func lexString(l *lexer) stateFn {
 			break
 		}
 		if r == eof {
-			return l.errorf("unexpected end of file")
+			return l.errorf("Unexpected EOF")
 		}
 	}
 	l.emit(itemString)

@@ -44,7 +44,7 @@ var lexTests = []lexTest{
 		item{itemIdentifier, 0, "foo"},
 	}},
 	{"Unclosed string", `"foo`, []item{
-		item{itemError, 0, "unexpected end of file"},
+		item{itemError, 0, "Unexpected EOF"},
 	}},
 	{"Unclosed list", "(", []item{
 		item{itemStartList, 0, "("},
