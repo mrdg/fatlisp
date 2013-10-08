@@ -27,8 +27,8 @@ const (
 )
 
 const (
-	startList string = "("
-	closeList string = ")"
+	startList rune = '('
+	closeList rune = ')'
 )
 
 const eof = 1
@@ -122,7 +122,7 @@ func (l *lexer) errorf(format string, args ...interface{}) stateFn {
 }
 
 func lexStartList(l *lexer) stateFn {
-	l.pos += len(startList)
+	l.pos += 1
 	l.emit(itemStartList)
 	l.nesting++
 	return lexTokens
@@ -153,10 +153,10 @@ func lexTokens(l *lexer) stateFn {
 			return lexNumber
 		case r == '"':
 			return lexString
-		case r == '(':
+		case r == startList:
 			l.backup()
 			return lexStartList
-		case r == ')':
+		case r == closeList:
 			l.backup()
 			return lexCloseList
 		case r == '\'':
@@ -174,7 +174,7 @@ func lexTokens(l *lexer) stateFn {
 }
 
 func lexCloseList(l *lexer) stateFn {
-	l.pos += len(closeList)
+	l.pos += 1
 	l.emit(itemCloseList)
 	l.nesting--
 	return lexTokens
@@ -188,7 +188,7 @@ func lexNumber(l *lexer) stateFn {
 	// Consider number invalid if it ends with anything
 	// but a space, (, ) or eof
 	r := l.peek()
-	if !isSpace(r) && r != '(' && r != ')' && r != eof {
+	if !isSpace(r) && r != startList && r != closeList && r != eof {
 		return l.errorf("Invalid number")
 	}
 	l.emit(itemNumber)
@@ -198,7 +198,7 @@ func lexNumber(l *lexer) stateFn {
 func lexIdentifier(l *lexer) stateFn {
 	for {
 		r := l.next()
-		if isSpace(r) || r == '(' || r == ')' || r == eof || r == '"' || !utf8.ValidRune(r) {
+		if isSpace(r) || r == startList || r == closeList || r == eof || r == '"' || !utf8.ValidRune(r) {
 			l.backup()
 			break
 		}
