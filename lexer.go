@@ -186,9 +186,9 @@ func lexNumber(l *lexer) stateFn {
 	l.backup()
 
 	// Consider number invalid if it ends with anything
-	// but a space, ( or )
+	// but a space, (, ) or eof
 	r := l.peek()
-	if !isSpace(r) && r != '(' && r != ')' {
+	if !isSpace(r) && r != '(' && r != ')' && r != eof {
 		return l.errorf("Invalid number")
 	}
 	l.emit(itemNumber)
@@ -198,7 +198,7 @@ func lexNumber(l *lexer) stateFn {
 func lexIdentifier(l *lexer) stateFn {
 	for {
 		r := l.next()
-		if isSpace(r) || r == '(' || r == ')' || r == '"' || !utf8.ValidRune(r) {
+		if isSpace(r) || r == '(' || r == ')' || r == eof || r == '"' || !utf8.ValidRune(r) {
 			l.backup()
 			break
 		}
