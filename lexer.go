@@ -122,7 +122,6 @@ func (l *lexer) errorf(format string, args ...interface{}) stateFn {
 }
 
 func lexStartList(l *lexer) stateFn {
-	l.pos += 1
 	l.emit(itemStartList)
 	l.nesting++
 	return lexTokens
@@ -142,27 +141,21 @@ func lexTokens(l *lexer) stateFn {
 			l.ignore()
 		case r == '+' || r == '-':
 			if unicode.IsDigit(l.peek()) {
-				l.backup()
 				return lexNumber
 			} else {
-				l.backup()
 				return lexIdentifier
 			}
 		case unicode.IsDigit(r):
-			l.backup()
 			return lexNumber
 		case r == '"':
 			return lexString
 		case r == startList:
-			l.backup()
 			return lexStartList
 		case r == closeList:
-			l.backup()
 			return lexCloseList
 		case r == '\'':
 			l.emit(itemQuote)
 		default:
-			l.backup()
 			if utf8.ValidRune(r) {
 				return lexIdentifier
 			} else {
@@ -174,7 +167,6 @@ func lexTokens(l *lexer) stateFn {
 }
 
 func lexCloseList(l *lexer) stateFn {
-	l.pos += 1
 	l.emit(itemCloseList)
 	l.nesting--
 	return lexTokens
