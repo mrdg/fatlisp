@@ -180,7 +180,7 @@ func lexNumber(l *lexer) stateFn {
 	// Consider number invalid if it ends with anything
 	// but a space, (, ) or eof
 	r := l.peek()
-	if !isSpace(r) && r != startList && r != closeList && r != eof {
+	if !isDelimiter(r) {
 		return l.errorf("Invalid number")
 	}
 	l.emit(itemNumber)
@@ -190,7 +190,7 @@ func lexNumber(l *lexer) stateFn {
 func lexIdentifier(l *lexer) stateFn {
 	for {
 		r := l.next()
-		if isSpace(r) || r == startList || r == closeList || r == eof || r == '"' || !utf8.ValidRune(r) {
+		if isDelimiter(r) || r == '"' || !utf8.ValidRune(r) {
 			l.backup()
 			break
 		}
@@ -213,6 +213,11 @@ func lexString(l *lexer) stateFn {
 	}
 	l.emit(itemString)
 	return lexTokens
+}
+
+// Tests whether r is a valid delimiter (to end a number or identifier token).
+func isDelimiter(r rune) bool {
+	return isSpace(r) || r == startList || r == closeList || r == eof
 }
 
 func isSpace(r rune) bool {
