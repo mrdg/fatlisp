@@ -21,9 +21,14 @@ func main() {
 	src, err := ioutil.ReadFile(file)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
-	} else {
-		tree := fatlisp.Parse(file, string(src))
-		fatlisp.Eval(tree)
-
+		os.Exit(2)
 	}
+
+	tree, err := fatlisp.Parse(file, string(src))
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(2)
+	}
+
+	fatlisp.Eval(tree)
 }

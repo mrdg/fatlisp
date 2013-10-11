@@ -2,7 +2,6 @@ package fatlisp
 
 import (
 	"fmt"
-	"os"
 	"strconv"
 	"strings"
 )
@@ -65,12 +64,12 @@ func newParser(name, input string) parser {
 	}
 }
 
-func Parse(name, input string) Value {
+func Parse(name, input string) (Value, error) {
 	p := newParser(name, input)
 	return p.parse()
 }
 
-func (p parser) parse() Value {
+func (p parser) parse() (Value, error) {
 	item := p.lex.NextToken()
 	for item.typ != itemEOF {
 		switch item.typ {
@@ -86,14 +85,19 @@ func (p parser) parse() Value {
 			p.currentList.push(parseIdentifier(item.val))
 
 		case itemNumber:
-			p.currentList.push(parseNumber(item.val))
+			num, err := parseNumber(item.val)
+			if err != nil {
+				return Value{}, fmt.Errorf("Error: %s - %s\n", p.errorPos(item), err)
+
+			}
+			p.currentList.push(num)
 
 		case itemString:
 			p.currentList.push(parseString(item.val))
 
 		case itemError:
-			fmt.Printf("Error: %s - %s\n", p.errorPos(item), item.val)
-			os.Exit(-1)
+			err := fmt.Errorf("Error: %s - %s\n", p.errorPos(item), item.val)
+			return Value{}, err
 
 		case itemQuote:
 			i := len(vtos(*p.currentList))
@@ -104,7 +108,7 @@ func (p parser) parse() Value {
 		item = p.lex.NextToken()
 	}
 	p.expandQuotes()
-	return *p.currentList
+	return *p.currentList, nil
 }
 
 func (p *parser) expandQuotes() {
@@ -212,17 +216,17 @@ func parseIdentifier(s string) Value {
 	return Value{typ: idType, data: s}
 }
 
-func parseNumber(s string) Value {
+func parseNumber(s string) (Value, error) {
 	i, err := strconv.ParseInt(s, 10, 64)
 	if err != nil {
 		f, err := strconv.ParseFloat(s, 64)
 		if err == nil {
-			return newFloat(f)
+			return newFloat(f), nil
 		} else {
-			panic("Invalid number syntax")
+			return Value{}, fmt.Errorf("Invalid number format")
 		}
 	}
-	return newInt(i)
+	return newInt(i), nil
 }
 
 func (v Value) String() string {
