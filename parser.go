@@ -164,7 +164,7 @@ func newList(vals ...Value) Value {
 	return Value{typ: listType, data: List{values: &vals}}
 }
 
-type Fn func(args ...Value) Value
+type Fn func(args ...Value) (Value, error)
 
 func newFn(fn Fn) Value {
 	return Value{typ: fnType, data: fn}

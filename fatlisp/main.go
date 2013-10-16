@@ -27,8 +27,10 @@ func main() {
 	tree, err := fatlisp.Parse(file, string(src))
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
-		os.Exit(2)
 	}
 
-	fatlisp.Eval(tree)
+	_, err = fatlisp.Eval(tree)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+	}
 }

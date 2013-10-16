@@ -28,30 +28,37 @@ func (e *Env) set(key string, v Value) {
 	e.defs[key] = v
 }
 
-func (e Env) get(id string) Value {
+func (e Env) get(id string) (Value, error) {
 	v, ok := e.defs[id]
 	if !ok {
 		if e.parent != nil {
 			parent := *e.parent
 			return parent.get(id)
+		} else {
+			return Value{}, fmt.Errorf("Error: unable to resolve '%s'", id)
 		}
 	}
-	return v
+	return v, nil
 }
 
-func Eval(root Value) []Value {
+func Eval(root Value) ([]Value, error) {
 	global := newEnv()
 	global.set("+", newFn(add))
 	global.set("puts", newFn(puts))
 
 	results := []Value{}
 	for _, v := range vtos(root) {
-		results = append(results, eval(v, global))
+		res, err := eval(v, global)
+		if err != nil {
+			return results, err
+		} else {
+			results = append(results, res)
+		}
 	}
-	return results
+	return results, nil
 }
 
-func eval(v Value, e *Env) Value {
+func eval(v Value, e *Env) (Value, error) {
 	switch v.typ {
 	case idType:
 		id := v.data.(string)
@@ -61,25 +68,32 @@ func eval(v Value, e *Env) Value {
 		args := make([]Value, len(list))
 
 		if list[0].typ == idType {
-			form, ok := specialForm(list[0])
+			form, ok := getSpecialForm(list[0])
 			if ok {
 				return form(e, list...)
 			}
 		}
 
 		for i, c := range list {
-			args[i] = eval(c, e)
+			res, err := eval(c, e)
+			if err != nil {
+				return Value{}, err
+			} else {
+				args[i] = res
+			}
 		}
 		fn := args[0].data.(Fn)
 		args = args[1:] // Pop of the function
 
 		return fn(args...)
 	default:
-		return v
+		return v, nil
 	}
 }
 
-func specialForm(v Value) (func(env *Env, args ...Value) Value, bool) {
+type specialForm func(env *Env, args ...Value) (Value, error)
+
+func getSpecialForm(v Value) (specialForm, bool) {
 	name := v.data.(string)
 	switch name {
 	case "def":
@@ -87,7 +101,7 @@ func specialForm(v Value) (func(env *Env, args ...Value) Value, bool) {
 	case "fn":
 		return fn, true
 	case "if":
-		return ifForm, true
+		return _if, true
 	case "quote":
 		return quote, true
 	default:
@@ -95,46 +109,73 @@ func specialForm(v Value) (func(env *Env, args ...Value) Value, bool) {
 	}
 }
 
-func quote(e *Env, vals ...Value) Value {
-	return vals[1]
+func quote(e *Env, vals ...Value) (Value, error) {
+	return vals[1], nil
 }
 
-func fn(e *Env, vals ...Value) Value {
+func fn(e *Env, vals ...Value) (Value, error) {
 	vals = vals[1:] // Pop off fn keyword
-	expectArgCount("fn", vals, 2)
+
+	if err := expectArgCount("fn", vals, 2); err != nil {
+		return Value{}, err
+	}
+	if err := expectArg("fn", vals, 0, listType); err != nil {
+		return Value{}, err
+	}
 
 	params := vals[0]
 	body := vals[1]
 
-	expectArg("fn", vals, 0, listType)
-
-	return newFn(func(args ...Value) Value {
+	return newFn(func(args ...Value) (Value, error) {
 		argc := len(vtos(params))
-		expectArgCount("function", args, argc)
-		return eval(body, newFunctionEnv(e, params, args))
-	})
+		if err := expectArgCount("function", args, argc); err != nil {
+			return Value{}, err
+		}
+		res, err := eval(body, newFunctionEnv(e, params, args))
+		if err != nil {
+			return Value{}, err
+		}
+		return res, nil
+	}), nil
 }
 
-func def(e *Env, args ...Value) Value {
+func def(e *Env, args ...Value) (Value, error) {
 	name := args[1].data.(string)
-	val := eval(args[2], e)
+	val, err := eval(args[2], e)
+	if err != nil {
+		return Value{}, err
+	}
 	e.set(name, val)
-	return args[1]
+	return args[1], nil
 }
 
-func ifForm(e *Env, args ...Value) Value {
+func _if(env *Env, args ...Value) (Value, error) {
+	var val Value
+	var err error
+
 	args = args[1:]
-	expectArgCount("if", args, 3)
+	if err = expectArgCount("if", args, 3); err != nil {
+		return Value{}, err
+	}
 
 	cond := args[0]
 	ifClause := args[1]
 	elseClause := args[2]
 
-	if truthy(eval(cond, e)) {
-		return eval(ifClause, e)
-	} else {
-		return eval(elseClause, e)
+	val, err = eval(cond, env)
+	if err != nil {
+		return Value{}, err
 	}
+
+	if truthy(val) {
+		val, err = eval(ifClause, env)
+	} else {
+		val, err = eval(elseClause, env)
+	}
+	if err != nil {
+		return Value{}, err
+	}
+	return val, nil
 }
 
 func truthy(v Value) bool {
@@ -148,16 +189,16 @@ func truthy(v Value) bool {
 	return true
 }
 
-func puts(vals ...Value) Value {
+func puts(vals ...Value) (Value, error) {
 	for _, v := range vals {
 		fmt.Print(v)
 		fmt.Print(" ")
 	}
 	fmt.Print("\n")
-	return Value{typ: nilType}
+	return Value{typ: nilType}, nil
 }
 
-func add(vals ...Value) Value {
+func add(vals ...Value) (Value, error) {
 	var sum int64 = 0
 	for _, v := range vals {
 		switch v.typ {
@@ -166,13 +207,13 @@ func add(vals ...Value) Value {
 		case intType:
 			sum += vtoi(v)
 		default:
-			panic(fmt.Sprintf("+: Unexpected %s", v))
+			return Value{}, fmt.Errorf("+: Unexpected %s", v)
 		}
 	}
-	return newInt(sum)
+	return newInt(sum), nil
 }
 
-func sumFloats(vals ...Value) Value {
+func sumFloats(vals ...Value) (Value, error) {
 	sum := 0.0
 	for _, v := range vals {
 		switch v.typ {
@@ -181,29 +222,31 @@ func sumFloats(vals ...Value) Value {
 		case floatType:
 			sum += vtof(v)
 		default:
-			panic(fmt.Sprintf("+: Unexpected  %s", v))
+			return Value{}, fmt.Errorf("+: Unexpected  %s", v)
 		}
 	}
-	return newFloat(sum)
+	return newFloat(sum), nil
 }
 
-func expectArgCount(name string, args []Value, expect int) {
+func expectArgCount(name string, args []Value, expect int) error {
 	if len(args) != expect {
 		arguments := "argument"
 		if expect != 1 {
 			arguments += "s"
 		}
 
-		err := fmt.Sprintf("Error: %s expects %d %s. Got %d.",
+		err := fmt.Errorf("Error: %s expects %d %s. Got %d.",
 			name, expect, arguments, len(args))
-		panic(err)
+		return err
 	}
+	return nil
 }
 
-func expectArg(name string, args []Value, index int, expect Type) {
+func expectArg(name string, args []Value, index int, expect Type) error {
 	if args[index].typ != expect {
-		err := fmt.Sprintf("Error: argument %d of %s should be of type %s.",
+		err := fmt.Errorf("Error: argument %d of %s should be of type %s.",
 			index+1, name, expect)
-		panic(err)
+		return err
 	}
+	return nil
 }
