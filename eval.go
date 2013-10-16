@@ -45,6 +45,10 @@ func Eval(root Value) ([]Value, error) {
 	global := newEnv()
 	global.set("+", newFn(add))
 	global.set("puts", newFn(puts))
+	global.set("def", newForm(def))
+	global.set("fn", newForm(fn))
+	global.set("if", newForm(_if))
+	global.set("quote", newForm(quote))
 
 	results := []Value{}
 	for _, v := range vtos(root) {
@@ -64,48 +68,44 @@ func eval(v Value, e *Env) (Value, error) {
 		id := v.data.(string)
 		return e.get(id)
 	case listType:
-		list := vtos(v)
-		args := make([]Value, len(list))
+		return evalList(v, e)
+	default:
+		return v, nil
+	}
+}
 
-		if list[0].typ == idType {
-			form, ok := getSpecialForm(list[0])
-			if ok {
-				return form(e, list...)
-			}
-		}
+func evalList(list Value, env *Env) (Value, error) {
+	slice := vtos(list)
+	args := make([]Value, len(slice)-1)
 
-		for i, c := range list {
-			res, err := eval(c, e)
+	// Eval the first item in the list
+	first, err := eval(slice[0], env)
+	if err != nil {
+		return Value{}, err
+	}
+
+	// Check if the first item is a fn or a special form.
+	// Returning an error if neither.
+	switch first.typ {
+	case fnType:
+		fn := first.data.(Fn)
+
+		// Loop over the rest of the list and eval each of
+		// the function's arguments.
+		for i, c := range slice[1:] {
+			res, err := eval(c, env)
 			if err != nil {
 				return Value{}, err
 			} else {
 				args[i] = res
 			}
 		}
-		fn := args[0].data.(Fn)
-		args = args[1:] // Pop of the function
-
 		return fn(args...)
+	case formType:
+		form := first.data.(specialForm)
+		return form(env, slice...)
 	default:
-		return v, nil
-	}
-}
-
-type specialForm func(env *Env, args ...Value) (Value, error)
-
-func getSpecialForm(v Value) (specialForm, bool) {
-	name := v.data.(string)
-	switch name {
-	case "def":
-		return def, true
-	case "fn":
-		return fn, true
-	case "if":
-		return _if, true
-	case "quote":
-		return quote, true
-	default:
-		return nil, false
+		return Value{}, fmt.Errorf("Error: not a function: %v", first)
 	}
 }
 

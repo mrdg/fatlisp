@@ -31,6 +31,7 @@ const (
 	fnType
 	nilType
 	boolType
+	formType
 )
 
 type Value struct {
@@ -168,6 +169,12 @@ type Fn func(args ...Value) (Value, error)
 
 func newFn(fn Fn) Value {
 	return Value{typ: fnType, data: fn}
+}
+
+type specialForm func(env *Env, args ...Value) (Value, error)
+
+func newForm(form specialForm) Value {
+	return Value{typ: formType, data: form}
 }
 
 func newInt(i int64) Value {
