@@ -10,45 +10,47 @@ type lexTest struct {
 	items []item
 }
 
+var p = pos{"test", 1, 1}
+
 var lexTests = []lexTest{
 	{"Int", "42", []item{
-		item{itemNumber, 0, "42"},
+		item{itemNumber, p, "42"},
 	}},
 	{"Float", "3.14159", []item{
-		item{itemNumber, 0, "3.14159"},
+		item{itemNumber, p, "3.14159"},
 	}},
 	{"Number with + sign", "+42", []item{
-		item{itemNumber, 0, "+42"},
+		item{itemNumber, p, "+42"},
 	}},
 	{"Number with - sign", "-42", []item{
-		item{itemNumber, 0, "-42"},
+		item{itemNumber, p, "-42"},
 	}},
 	{"Invalid trailing character", "42d", []item{
-		item{itemError, 0, "Invalid number"},
+		item{itemError, p, "Invalid number"},
 	}},
 
 	{"String", `"A string"`, []item{
-		item{itemString, 0, `"A string"`},
+		item{itemString, p, `"A string"`},
 	}},
 
 	{"Identifier", "thing", []item{
-		item{itemIdentifier, 0, "thing"},
+		item{itemIdentifier, p, "thing"},
 	}},
 
 	{"Brackets", "()", []item{
-		item{itemStartList, 0, "("},
-		item{itemCloseList, 0, ")"},
+		item{itemStartList, p, "("},
+		item{itemCloseList, p, ")"},
 	}},
 	{"Quote", "'foo", []item{
-		item{itemQuote, 0, "'"},
-		item{itemIdentifier, 0, "foo"},
+		item{itemQuote, p, "'"},
+		item{itemIdentifier, p, "foo"},
 	}},
 	{"Unclosed string", `"foo`, []item{
-		item{itemError, 0, "Unexpected EOF"},
+		item{itemError, p, "Unexpected EOF"},
 	}},
 	{"Unclosed list", "(", []item{
-		item{itemStartList, 0, "("},
-		item{itemError, 0, "Unexpected EOF"},
+		item{itemStartList, p, "("},
+		item{itemError, p, "Unexpected EOF"},
 	}},
 }
 

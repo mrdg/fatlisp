@@ -3,7 +3,6 @@ package fatlisp
 import (
 	"fmt"
 	"strconv"
-	"strings"
 )
 
 type parser struct {
@@ -88,7 +87,7 @@ func (p parser) parse() (Value, error) {
 		case itemNumber:
 			num, err := parseNumber(item.val)
 			if err != nil {
-				return Value{}, fmt.Errorf("Error: %s - %s\n", p.errorPos(item), err)
+				return Value{}, fmt.Errorf("Error: %s - %s\n", item.pos, err)
 
 			}
 			p.currentList.push(num)
@@ -97,7 +96,7 @@ func (p parser) parse() (Value, error) {
 			p.currentList.push(parseString(item.val))
 
 		case itemError:
-			err := fmt.Errorf("Error: %s - %s\n", p.errorPos(item), item.val)
+			err := fmt.Errorf("Error: %s - %s\n", item.pos, item.val)
 			return Value{}, err
 
 		case itemQuote:
@@ -129,21 +128,6 @@ func (p *parser) pushList(list *Value) {
 func (p *parser) popList() {
 	p.stack = p.stack[:len(p.stack)-1]
 	p.currentList = p.stack[len(p.stack)-1]
-}
-
-func (p parser) errorPos(i item) string {
-	str := p.input[:i.pos-1]
-	lastLine := strings.LastIndex(str, "\n")
-
-	var col int
-	if lastLine == -1 {
-		col = i.pos
-	} else {
-		col = i.pos - (lastLine + 1)
-	}
-
-	lineNum := 1 + strings.Count(str, "\n")
-	return fmt.Sprintf("%s:%d:%d", p.name, lineNum, col)
 }
 
 func (list *Value) push(val Value) {

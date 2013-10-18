@@ -9,8 +9,18 @@ import (
 
 type item struct {
 	typ itemType
-	pos int
+	pos pos
 	val string
+}
+
+type pos struct {
+	file string
+	line int
+	col  int
+}
+
+func (p pos) String() string {
+	return fmt.Sprintf("%s:%d:%d", p.file, p.line, p.col)
 }
 
 type itemType int
@@ -81,8 +91,29 @@ func (l *lexer) run() {
 }
 
 func (l *lexer) emit(t itemType) {
-	l.items <- item{t, l.start, l.input[l.start:l.pos]}
+	l.items <- item{t, l.currentPos(), l.input[l.start:l.pos]}
 	l.start = l.pos
+}
+
+// currentPos return the position of the current
+// token in the input string.
+func (l *lexer) currentPos() pos {
+	line := 1
+	col := 1
+
+	for i, c := range l.input[:l.start] {
+		if c == '\n' {
+			if i == l.start-1 {
+				break
+			}
+			line++
+			col = 1
+		} else {
+			col++
+		}
+	}
+
+	return pos{l.name, line, col}
 }
 
 // next returns the next rune in the input.
@@ -117,7 +148,7 @@ func (l *lexer) peek() rune {
 }
 
 func (l *lexer) errorf(format string, args ...interface{}) stateFn {
-	l.items <- item{itemError, l.start, fmt.Sprintf(format, args...)}
+	l.items <- item{itemError, l.currentPos(), fmt.Sprintf(format, args...)}
 	return nil
 }
 
