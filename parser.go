@@ -152,10 +152,16 @@ func newList(vals ...Value) Value {
 	return Value{typ: listType, data: List{values: &vals}}
 }
 
-type Fn func(args ...Value) (Value, error)
+type Fn struct {
+	fn func(args ...Value) (Value, error)
 
-func newFn(fn Fn) Value {
-	return Value{typ: fnType, data: fn}
+	// Number of expected arguments. -1 if variable.
+	argc int
+}
+
+func newFn(fn func(args ...Value) (Value, error), argc int) Value {
+	f := Fn{fn, argc}
+	return Value{typ: fnType, data: f}
 }
 
 type specialForm func(env *Env, args ...Value) (Value, error)

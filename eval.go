@@ -45,8 +45,8 @@ func (e Env) get(val Value) (Value, error) {
 
 func Eval(root Value) ([]Value, error) {
 	global := newEnv()
-	global.set("+", newFn(add))
-	global.set("puts", newFn(puts))
+	global.set("+", newFn(add, -1))
+	global.set("puts", newFn(puts, -1))
 	global.set("def", newForm(def))
 	global.set("fn", newForm(fn))
 	global.set("if", newForm(_if))
@@ -78,9 +78,10 @@ func eval(v Value, e *Env) (Value, error) {
 func evalList(list Value, env *Env) (Value, error) {
 	slice := vtos(list)
 	args := make([]Value, len(slice)-1)
+	id := slice[0]
 
 	// Eval the first item in the list
-	first, err := eval(slice[0], env)
+	first, err := eval(id, env)
 	if err != nil {
 		return Value{}, err
 	}
@@ -101,7 +102,12 @@ func evalList(list Value, env *Env) (Value, error) {
 				args[i] = res
 			}
 		}
-		return fn(args...)
+
+		if err := expectArgCount(id.String(), args, fn.argc); err != nil {
+			err := newError(id.origin, err.Error())
+			return Value{}, err
+		}
+		return fn.fn(args...)
 	case formType:
 		form := first.data.(specialForm)
 		return form(env, slice...)
@@ -128,17 +134,15 @@ func fn(e *Env, vals ...Value) (Value, error) {
 	params := vals[0]
 	body := vals[1]
 
-	return newFn(func(args ...Value) (Value, error) {
-		argc := len(vtos(params))
-		if err := expectArgCount("function", args, argc); err != nil {
-			return Value{}, err
-		}
+	fn := newFn(func(args ...Value) (Value, error) {
 		res, err := eval(body, newFunctionEnv(e, params, args))
 		if err != nil {
 			return Value{}, err
 		}
 		return res, nil
-	}), nil
+	}, len(vtos(params)))
+
+	return fn, nil
 }
 
 func def(e *Env, args ...Value) (Value, error) {
@@ -234,13 +238,13 @@ func sumFloats(vals ...Value) (Value, error) {
 }
 
 func expectArgCount(name string, args []Value, expect int) error {
-	if len(args) != expect {
+	if expect != -1 && len(args) != expect {
 		arguments := "argument"
 		if expect != 1 {
 			arguments += "s"
 		}
 
-		return fmt.Errorf("%s expects %d %s. Got %d.",
+		return fmt.Errorf("%s expected %d %s. Got %d.",
 			name, expect, arguments, len(args))
 	}
 	return nil
