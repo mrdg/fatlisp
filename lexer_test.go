@@ -46,11 +46,11 @@ var lexTests = []lexTest{
 		item{itemIdentifier, p, "foo"},
 	}},
 	{"Unclosed string", `"foo`, []item{
-		item{itemError, p, "Unexpected EOF"},
+		item{itemError, p, "unexpected EOF"},
 	}},
 	{"Unclosed list", "(", []item{
 		item{itemStartList, p, "("},
-		item{itemError, p, "Unexpected EOF"},
+		item{itemError, p, "unexpected EOF"},
 	}},
 }
 

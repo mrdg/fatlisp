@@ -36,6 +36,10 @@ const (
 type Value struct {
 	typ  Type
 	data interface{}
+
+	// Lexer token from which the value was parsed.
+	// Used to show the location of an error in source.
+	origin item
 }
 
 type List struct {
@@ -75,6 +79,7 @@ func (p parser) parse() (Value, error) {
 		switch item.typ {
 		case itemStartList:
 			list := newList()
+			list.origin = item
 			p.currentList.push(list)
 			p.pushList(&list)
 
@@ -82,22 +87,20 @@ func (p parser) parse() (Value, error) {
 			p.popList()
 
 		case itemIdentifier:
-			p.currentList.push(parseIdentifier(item.val))
+			p.currentList.push(parseIdentifier(item))
 
 		case itemNumber:
-			num, err := parseNumber(item.val)
+			num, err := parseNumber(item)
 			if err != nil {
-				return Value{}, fmt.Errorf("Error: %s - %s\n", item.pos, err)
-
+				return num, err
 			}
 			p.currentList.push(num)
 
 		case itemString:
-			p.currentList.push(parseString(item.val))
+			p.currentList.push(parseString(item))
 
 		case itemError:
-			err := fmt.Errorf("Error: %s - %s\n", item.pos, item.val)
-			return Value{}, err
+			return Value{}, newError(item, item.val)
 
 		case itemQuote:
 			i := len(vtos(*p.currentList))
@@ -186,38 +189,48 @@ func vtob(v Value) bool {
 	return v.data.(bool)
 }
 
-func parseString(s string) Value {
+func newError(origin item, msg string, args ...interface{}) error {
+	msg = fmt.Sprintf(msg, args...)
+	return fmt.Errorf("%s %s", origin.pos, msg)
+}
+
+func parseString(i item) Value {
+	s := i.val
 	// Strip of quotes that are included in the token.
 	s = s[1:]
 	s = s[:len(s)-1]
 
-	return Value{typ: stringType, data: s}
+	return Value{typ: stringType, data: s, origin: i}
 }
 
-func parseIdentifier(s string) Value {
-	if s == "true" {
+func parseIdentifier(i item) Value {
+	if i.val == "true" {
 		return Value{typ: boolType, data: true}
 	}
-	if s == "false" {
+	if i.val == "false" {
 		return Value{typ: boolType, data: false}
 	}
-	if s == "nil" {
+	if i.val == "nil" {
 		return Value{typ: nilType, data: nil}
 	}
-	return Value{typ: idType, data: s}
+	return Value{typ: idType, data: i.val, origin: i}
 }
 
-func parseNumber(s string) (Value, error) {
-	i, err := strconv.ParseInt(s, 10, 64)
+func parseNumber(i item) (Value, error) {
+	n, err := strconv.ParseInt(i.val, 10, 64)
 	if err != nil {
-		f, err := strconv.ParseFloat(s, 64)
+		f, err := strconv.ParseFloat(i.val, 64)
 		if err == nil {
-			return newFloat(f), nil
+			v := newFloat(f)
+			v.origin = i
+			return v, nil
 		} else {
-			return Value{}, fmt.Errorf("Invalid number format")
+			return Value{}, newError(i, "Invalid number")
 		}
 	}
-	return newInt(i), nil
+	v := newInt(n)
+	v.origin = i
+	return v, nil
 }
 
 func (v Value) String() string {

@@ -163,7 +163,7 @@ func lexTokens(l *lexer) stateFn {
 		switch r := l.next(); {
 		case r == eof:
 			if l.nesting > 0 {
-				return l.errorf("Unexpected EOF")
+				return l.errorf("unexpected EOF")
 			} else {
 				l.emit(itemEOF)
 				return nil
@@ -239,7 +239,7 @@ func lexString(l *lexer) stateFn {
 			break
 		}
 		if r == eof {
-			return l.errorf("Unexpected EOF")
+			return l.errorf("unexpected EOF")
 		}
 	}
 	l.emit(itemString)

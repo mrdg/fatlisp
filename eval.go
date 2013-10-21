@@ -28,14 +28,16 @@ func (e *Env) set(key string, v Value) {
 	e.defs[key] = v
 }
 
-func (e Env) get(id string) (Value, error) {
+func (e Env) get(val Value) (Value, error) {
+	id := val.data.(string)
 	v, ok := e.defs[id]
 	if !ok {
 		if e.parent != nil {
 			parent := *e.parent
-			return parent.get(id)
+			return parent.get(val)
 		} else {
-			return Value{}, fmt.Errorf("Error: unable to resolve '%s'", id)
+			err := newError(val.origin, "unable to resolve %s", id)
+			return Value{}, err
 		}
 	}
 	return v, nil
@@ -65,8 +67,7 @@ func Eval(root Value) ([]Value, error) {
 func eval(v Value, e *Env) (Value, error) {
 	switch v.typ {
 	case idType:
-		id := v.data.(string)
-		return e.get(id)
+		return e.get(v)
 	case listType:
 		return evalList(v, e)
 	default:
@@ -105,7 +106,8 @@ func evalList(list Value, env *Env) (Value, error) {
 		form := first.data.(specialForm)
 		return form(env, slice...)
 	default:
-		return Value{}, fmt.Errorf("Error: not a function: %v", first)
+		err := newError(first.origin, "not a function: %v", slice[0])
+		return Value{}, err
 	}
 }
 
@@ -153,9 +155,10 @@ func _if(env *Env, args ...Value) (Value, error) {
 	var val Value
 	var err error
 
+	ifForm := args[0]
 	args = args[1:]
 	if err = expectArgCount("if", args, 3); err != nil {
-		return Value{}, err
+		return Value{}, newError(ifForm.origin, err.Error())
 	}
 
 	cond := args[0]
@@ -207,7 +210,8 @@ func add(vals ...Value) (Value, error) {
 		case intType:
 			sum += vtoi(v)
 		default:
-			return Value{}, fmt.Errorf("+: Unexpected %s", v)
+			err := newError(v.origin, "unexpected %s in +", v.typ)
+			return Value{}, err
 		}
 	}
 	return newInt(sum), nil
@@ -222,7 +226,8 @@ func sumFloats(vals ...Value) (Value, error) {
 		case floatType:
 			sum += vtof(v)
 		default:
-			return Value{}, fmt.Errorf("+: Unexpected  %s", v)
+			err := newError(v.origin, "unexpected %s in +", v.typ)
+			return Value{}, err
 		}
 	}
 	return newFloat(sum), nil
@@ -235,18 +240,16 @@ func expectArgCount(name string, args []Value, expect int) error {
 			arguments += "s"
 		}
 
-		err := fmt.Errorf("Error: %s expects %d %s. Got %d.",
+		return fmt.Errorf("%s expects %d %s. Got %d.",
 			name, expect, arguments, len(args))
-		return err
 	}
 	return nil
 }
 
 func expectArg(name string, args []Value, index int, expect Type) error {
 	if args[index].typ != expect {
-		err := fmt.Errorf("Error: argument %d of %s should be of type %s.",
+		return fmt.Errorf("argument %d of %s should be of type %s.",
 			index+1, name, expect)
-		return err
 	}
 	return nil
 }
