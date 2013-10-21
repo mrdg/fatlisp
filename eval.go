@@ -103,7 +103,7 @@ func evalList(list Value, env *Env) (Value, error) {
 			}
 		}
 
-		if err := expectArgCount(id.String(), args, fn.argc); err != nil {
+		if err := expectArgCount(id, args, fn.argc); err != nil {
 			err := newError(id.origin, err.Error())
 			return Value{}, err
 		}
@@ -118,17 +118,23 @@ func evalList(list Value, env *Env) (Value, error) {
 }
 
 func quote(e *Env, vals ...Value) (Value, error) {
-	return vals[1], nil
+	quote := vals[0]
+	vals = vals[1:]
+	if err := expectArgCount(quote, vals, 1); err != nil {
+		return Value{}, newError(quote.origin, err.Error())
+	}
+	return vals[0], nil
 }
 
 func fn(e *Env, vals ...Value) (Value, error) {
+	fnForm := vals[0]
 	vals = vals[1:] // Pop off fn keyword
 
-	if err := expectArgCount("fn", vals, 2); err != nil {
-		return Value{}, err
+	if err := expectArgCount(fnForm, vals, 2); err != nil {
+		return Value{}, newError(fnForm.origin, err.Error())
 	}
-	if err := expectArg("fn", vals, 0, listType); err != nil {
-		return Value{}, err
+	if err := expectArg(fnForm, vals, 0, listType); err != nil {
+		return Value{}, newError(fnForm.origin, err.Error())
 	}
 
 	params := vals[0]
@@ -146,13 +152,24 @@ func fn(e *Env, vals ...Value) (Value, error) {
 }
 
 func def(e *Env, args ...Value) (Value, error) {
-	name := args[1].data.(string)
-	val, err := eval(args[2], e)
+	def := args[0]
+	args = args[1:]
+
+	if err := expectArgCount(def, args, 2); err != nil {
+		return Value{}, newError(def.origin, err.Error())
+	}
+	if err := expectArg(def, args, 0, idType); err != nil {
+		return Value{}, newError(def.origin, err.Error())
+	}
+
+	id := args[0].data.(string)
+
+	val, err := eval(args[1], e)
 	if err != nil {
 		return Value{}, err
 	}
-	e.set(name, val)
-	return args[1], nil
+	e.set(id, val)
+	return args[0], nil
 }
 
 func _if(env *Env, args ...Value) (Value, error) {
@@ -161,7 +178,7 @@ func _if(env *Env, args ...Value) (Value, error) {
 
 	ifForm := args[0]
 	args = args[1:]
-	if err = expectArgCount("if", args, 3); err != nil {
+	if err = expectArgCount(ifForm, args, 3); err != nil {
 		return Value{}, newError(ifForm.origin, err.Error())
 	}
 
@@ -237,7 +254,7 @@ func sumFloats(vals ...Value) (Value, error) {
 	return newFloat(sum), nil
 }
 
-func expectArgCount(name string, args []Value, expect int) error {
+func expectArgCount(val Value, args []Value, expect int) error {
 	if expect != -1 && len(args) != expect {
 		arguments := "argument"
 		if expect != 1 {
@@ -245,15 +262,15 @@ func expectArgCount(name string, args []Value, expect int) error {
 		}
 
 		return fmt.Errorf("%s expected %d %s. Got %d.",
-			name, expect, arguments, len(args))
+			val, expect, arguments, len(args))
 	}
 	return nil
 }
 
-func expectArg(name string, args []Value, index int, expect Type) error {
+func expectArg(val Value, args []Value, index int, expect Type) error {
 	if args[index].typ != expect {
 		return fmt.Errorf("argument %d of %s should be of type %s.",
-			index+1, name, expect)
+			index+1, val, expect)
 	}
 	return nil
 }
