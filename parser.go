@@ -153,21 +153,38 @@ func newList(vals ...Value) Value {
 }
 
 type Fn struct {
-	fn func(args ...Value) (Value, error)
-
-	// Number of expected arguments. -1 if variable.
-	argc int
+	fn  func(args ...Value) (Value, error)
+	sig signature
 }
 
-func newFn(fn func(args ...Value) (Value, error), argc int) Value {
-	f := Fn{fn, argc}
-	return Value{typ: fnType, data: f}
+// signature describes how many arguments a fn or form
+// can receive. For some forms, the types of arguments
+// are also validated.
+// maxArgs is -1 if there is no upper limit.
+type signature struct {
+	name    string
+	minArgs int
+	maxArgs int
+	types   []Type
 }
 
-type specialForm func(env *Env, args ...Value) (Value, error)
+func newFn(fn func(args ...Value) (Value, error), minArgs, maxArgs int) Value {
+	sig := signature{name: "fn", minArgs: minArgs, maxArgs: maxArgs}
+	f := Fn{fn, sig}
+	return Value{typ: fnType, data: &f}
+}
 
-func newForm(form specialForm) Value {
-	return Value{typ: formType, data: form}
+type specialForm struct {
+	fn  formFn
+	sig signature
+}
+
+type formFn func(env *Env, args ...Value) (Value, error)
+
+func newForm(name string, fn formFn, minArgs, maxArgs int, types []Type) Value {
+	sig := signature{name, minArgs, maxArgs, types}
+	form := specialForm{fn, sig}
+	return Value{typ: formType, data: &form}
 }
 
 func newInt(i int64) Value {
@@ -193,6 +210,14 @@ func vtof(v Value) float64 {
 
 func vtob(v Value) bool {
 	return v.data.(bool)
+}
+
+func vtofn(v Value) *Fn {
+	return v.data.(*Fn)
+}
+
+func vtoform(v Value) *specialForm {
+	return v.data.(*specialForm)
 }
 
 func newError(origin item, msg string, args ...interface{}) error {
