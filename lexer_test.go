@@ -59,13 +59,13 @@ func TestLex(t *testing.T) {
 		l := Lex(test.name, test.input)
 		for _, item := range test.items {
 			tok := l.NextToken()
-			if !equal(item, tok) {
+			if !testEqual(item, tok) {
 				t.Errorf("Fail: %s - expected %v, got %v", test.name, item, tok)
 			}
 		}
 	}
 }
 
-func equal(i1, i2 item) bool {
+func testEqual(i1, i2 item) bool {
 	return i1.val == i2.val && i1.typ == i2.typ
 }

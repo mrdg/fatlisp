@@ -42,6 +42,10 @@ type Value struct {
 	origin item
 }
 
+type Int int64
+type Float float64
+type String string
+
 type List struct {
 	values *[]Value
 }
@@ -187,42 +191,16 @@ func newForm(name string, fn formFn, minArgs, maxArgs int, types []Type) Value {
 	return Value{typ: formType, data: &form}
 }
 
-func newInt(i int64) Value {
+func newInt(i Int) Value {
 	return Value{typ: intType, data: i}
 }
 
-func newFloat(f float64) Value {
+func newFloat(f Float) Value {
 	return Value{typ: floatType, data: f}
 }
 
-func vtos(v Value) []Value {
-	list := v.data.(List)
-	return *list.values
-}
-
-func vtoi(v Value) int64 {
-	return v.data.(int64)
-}
-
-func vtof(v Value) float64 {
-	return v.data.(float64)
-}
-
-func vtob(v Value) bool {
-	return v.data.(bool)
-}
-
-func vtofn(v Value) *Fn {
-	return v.data.(*Fn)
-}
-
-func vtoform(v Value) *specialForm {
-	return v.data.(*specialForm)
-}
-
-func newError(origin item, msg string, args ...interface{}) error {
-	msg = fmt.Sprintf(msg, args...)
-	return fmt.Errorf("%s %s", origin.pos, msg)
+func newBool(b bool) Value {
+	return Value{typ: boolType, data: b}
 }
 
 func parseString(i item) Value {
@@ -252,14 +230,14 @@ func parseNumber(i item) (Value, error) {
 	if err != nil {
 		f, err := strconv.ParseFloat(i.val, 64)
 		if err == nil {
-			v := newFloat(f)
+			v := newFloat(Float(f))
 			v.origin = i
 			return v, nil
 		} else {
 			return Value{}, newError(i, "Invalid number")
 		}
 	}
-	v := newInt(n)
+	v := newInt(Int(n))
 	v.origin = i
 	return v, nil
 }

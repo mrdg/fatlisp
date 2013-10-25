@@ -17,7 +17,7 @@ func newFunctionEnv(parent *Env, params Value, args []Value) *Env {
 	env.parent = parent
 
 	for i, p := range *(params.data.(List).values) {
-		name := p.data.(string)
+		name := val2str(p)
 		value := args[i]
 		env.set(name, value)
 	}
@@ -29,7 +29,7 @@ func (e *Env) set(key string, v Value) {
 }
 
 func (e Env) get(val Value) (Value, error) {
-	id := val.data.(string)
+	id := val2str(val)
 	v, ok := e.defs[id]
 	if !ok {
 		if e.parent != nil {
@@ -45,7 +45,11 @@ func (e Env) get(val Value) (Value, error) {
 
 func Eval(root Value) ([]Value, error) {
 	global := newEnv()
-	global.set("+", newFn(add, 0, -1))
+	global.set("add", newFn(add, 2, 2))
+	global.set("subtract", newFn(subtract, 2, 2))
+	global.set("multiply", newFn(multiply, 2, 2))
+	global.set("divide", newFn(divide, 2, 2))
+	global.set("compare", newFn(compare, 2, 2))
 	global.set("puts", newFn(puts, 0, -1))
 
 	global.set("def", newForm("def", def, 2, 2, []Type{idType}))
@@ -107,7 +111,11 @@ func evalList(list Value, env *Env) (Value, error) {
 			err := newError(id.origin, err.Error())
 			return Value{}, err
 		}
-		return fn.fn(args...)
+		val, err := fn.fn(args...)
+		if err != nil {
+			return val, err
+		}
+		return val, err
 	case formType:
 		form := vtoform(first)
 		if err := validateFormArgs(form, slice[1:]); err != nil {
@@ -147,7 +155,7 @@ func fn(e *Env, vals ...Value) (Value, error) {
 func def(e *Env, args ...Value) (Value, error) {
 	args = args[1:]
 
-	id := args[0].data.(string)
+	id := val2str(args[0])
 
 	val, err := eval(args[1], e)
 	if err != nil {
@@ -204,38 +212,6 @@ func puts(vals ...Value) (Value, error) {
 	}
 	fmt.Print("\n")
 	return Value{typ: nilType}, nil
-}
-
-func add(vals ...Value) (Value, error) {
-	var sum int64 = 0
-	for _, v := range vals {
-		switch v.typ {
-		case floatType:
-			return sumFloats(vals...)
-		case intType:
-			sum += vtoi(v)
-		default:
-			err := newError(v.origin, "unexpected %s in +", v.typ)
-			return Value{}, err
-		}
-	}
-	return newInt(sum), nil
-}
-
-func sumFloats(vals ...Value) (Value, error) {
-	sum := 0.0
-	for _, v := range vals {
-		switch v.typ {
-		case intType:
-			sum += float64(vtoi(v))
-		case floatType:
-			sum += vtof(v)
-		default:
-			err := newError(v.origin, "unexpected %s in +", v.typ)
-			return Value{}, err
-		}
-	}
-	return newFloat(sum), nil
 }
 
 func validateFnArgs(fn *Fn, args []Value) error {
