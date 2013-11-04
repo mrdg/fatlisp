@@ -107,7 +107,7 @@ func (p parser) parse() (Value, error) {
 			return Value{}, newError(item, item.val)
 
 		case itemQuote:
-			i := len(vtos(*p.currentList))
+			i := len(val2slice(*p.currentList))
 			q := Quote{list: p.currentList, index: i, id: "quote"}
 			p.quotes = append(p.quotes, q)
 		}
@@ -191,18 +191,6 @@ func newForm(name string, fn formFn, minArgs, maxArgs int, types []Type) Value {
 	return Value{typ: formType, data: &form}
 }
 
-func newInt(i Int) Value {
-	return Value{typ: intType, data: i}
-}
-
-func newFloat(f Float) Value {
-	return Value{typ: floatType, data: f}
-}
-
-func newBool(b bool) Value {
-	return Value{typ: boolType, data: b}
-}
-
 func parseString(i item) Value {
 	s := i.val
 	// Strip of quotes that are included in the token.
@@ -230,14 +218,14 @@ func parseNumber(i item) (Value, error) {
 	if err != nil {
 		f, err := strconv.ParseFloat(i.val, 64)
 		if err == nil {
-			v := newFloat(Float(f))
+			v := float2val(Float(f))
 			v.origin = i
 			return v, nil
 		} else {
 			return Value{}, newError(i, "Invalid number")
 		}
 	}
-	v := newInt(Int(n))
+	v := int2val(Int(n))
 	v.origin = i
 	return v, nil
 }
@@ -247,9 +235,9 @@ func (v Value) String() string {
 	case stringType:
 		return v.data.(string)
 	case intType:
-		return fmt.Sprintf("%d", vtoi(v))
+		return fmt.Sprintf("%d", val2int(v))
 	case floatType:
-		return fmt.Sprintf("%v", vtof(v))
+		return fmt.Sprintf("%v", val2float(v))
 	case idType:
 		return v.data.(string)
 	case listType:
@@ -266,7 +254,7 @@ func (v Value) String() string {
 	case nilType:
 		return "nil"
 	case boolType:
-		return fmt.Sprintf("%v", vtob(v))
+		return fmt.Sprintf("%v", val2bool(v))
 	case fnType:
 		return fmt.Sprintf("<fn>")
 	default:

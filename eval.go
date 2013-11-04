@@ -58,7 +58,7 @@ func Eval(root Value) ([]Value, error) {
 	global.set("quote", newForm("quote", quote, 1, 1, []Type{}))
 
 	results := []Value{}
-	for _, v := range vtos(root) {
+	for _, v := range val2slice(root) {
 		res, err := eval(v, global)
 		if err != nil {
 			return results, err
@@ -81,7 +81,7 @@ func eval(v Value, e *Env) (Value, error) {
 }
 
 func evalList(list Value, env *Env) (Value, error) {
-	slice := vtos(list)
+	slice := val2slice(list)
 	args := make([]Value, len(slice)-1)
 	id := slice[0]
 
@@ -106,7 +106,7 @@ func evalList(list Value, env *Env) (Value, error) {
 			}
 		}
 
-		fn := vtofn(first)
+		fn := val2fn(first)
 		if err := validateFnArgs(fn, args); err != nil {
 			err := newError(id.origin, err.Error())
 			return Value{}, err
@@ -117,7 +117,7 @@ func evalList(list Value, env *Env) (Value, error) {
 		}
 		return val, err
 	case formType:
-		form := vtoform(first)
+		form := val2form(first)
 		if err := validateFormArgs(form, slice[1:]); err != nil {
 			err := newError(id.origin, err.Error())
 			return Value{}, err
@@ -139,7 +139,7 @@ func fn(e *Env, vals ...Value) (Value, error) {
 	params := vals[0]
 	body := vals[1]
 
-	min := len(vtos(params))
+	min := len(val2slice(params))
 	max := min
 	fn := newFn(func(args ...Value) (Value, error) {
 		res, err := eval(body, newFunctionEnv(e, params, args))
@@ -165,7 +165,7 @@ func def(e *Env, args ...Value) (Value, error) {
 	// if value is a fn, set the name on its signature
 	// so it can be displayed in error messages
 	if val.typ == fnType {
-		fn := vtofn(val)
+		fn := val2fn(val)
 		fn.sig.name = id
 	}
 
@@ -198,7 +198,7 @@ func truthy(v Value) bool {
 	if v.typ == nilType {
 		return false
 	}
-	if v.typ == boolType && !vtob(v) {
+	if v.typ == boolType && !val2bool(v) {
 		return false
 	}
 

@@ -2,28 +2,28 @@ package fatlisp
 
 import "fmt"
 
-func vtos(v Value) []Value {
+func val2slice(v Value) []Value {
 	list := v.data.(List)
 	return *list.values
 }
 
-func vtoi(v Value) Int {
+func val2int(v Value) Int {
 	return v.data.(Int)
 }
 
-func vtof(v Value) Float {
+func val2float(v Value) Float {
 	return v.data.(Float)
 }
 
-func vtob(v Value) bool {
+func val2bool(v Value) bool {
 	return v.data.(bool)
 }
 
-func vtofn(v Value) *Fn {
+func val2fn(v Value) *Fn {
 	return v.data.(*Fn)
 }
 
-func vtoform(v Value) *specialForm {
+func val2form(v Value) *specialForm {
 	return v.data.(*specialForm)
 }
 
@@ -44,9 +44,21 @@ func val2num(v Value) Number {
 
 func num2val(n Number) Value {
 	if n.isFloat() {
-		return newFloat(n.toFloat())
+		return float2val(n.toFloat())
 	}
-	return newInt(n.toInt())
+	return int2val(n.toInt())
+}
+
+func int2val(i Int) Value {
+	return Value{typ: intType, data: i}
+}
+
+func float2val(f Float) Value {
+	return Value{typ: floatType, data: f}
+}
+
+func bool2val(b bool) Value {
+	return Value{typ: boolType, data: b}
 }
 
 func checkTypes(vals []Value, types ...Type) error {

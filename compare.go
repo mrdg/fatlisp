@@ -7,15 +7,15 @@ func equal(vals ...Value) (Value, error) {
 	y := vals[1]
 
 	if x.typ != y.typ {
-		return newInt(-1), nil
+		return int2val(-1), nil
 	}
 
 	var eq bool
 	switch x.typ {
 	case intType:
-		eq = vtoi(x) == vtoi(y)
+		eq = val2int(x) == val2int(y)
 	case floatType:
-		eq = vtof(x) == vtof(y)
+		eq = val2float(x) == val2float(y)
 	case stringType:
 	case idType:
 		eq = val2str(x) == val2str(y)
@@ -24,14 +24,14 @@ func equal(vals ...Value) (Value, error) {
 	case nilType:
 		eq = true
 	case boolType:
-		eq = vtob(x) == vtob(y)
+		eq = val2bool(x) == val2bool(y)
 	case fnType:
-		xp := vtofn(x)
-		yp := vtofn(y)
+		xp := val2fn(x)
+		yp := val2fn(y)
 		eq = &xp == &yp
 	}
 
-	return newBool(eq), nil
+	return bool2val(eq), nil
 }
 
 func compare(vals ...Value) (Value, error) {
@@ -43,14 +43,14 @@ func compare(vals ...Value) (Value, error) {
 func (x Value) compare(y Value) (Value, error) {
 	if x.typ != y.typ {
 		if !isNumeric(x) || !isNumeric(y) {
-			return newInt(-1), nil
+			return int2val(-1), nil
 		}
 	}
 	switch x.typ {
 	case intType:
-		return vtoi(x).compare(val2num(y)), nil
+		return val2int(x).compare(val2num(y)), nil
 	case floatType:
-		return vtof(x).compare(val2num(y)), nil
+		return val2float(x).compare(val2num(y)), nil
 	case stringType:
 		return String(val2str(x)).compare(String(val2str(y))), nil
 	default:
@@ -62,11 +62,11 @@ func (x Int) compare(y Number) Value {
 	a := Float(x)
 	b := y.toFloat()
 	if a > b {
-		return newInt(1)
+		return int2val(1)
 	} else if a == b {
-		return newInt(0)
+		return int2val(0)
 	} else {
-		return newInt(-1)
+		return int2val(-1)
 	}
 }
 
@@ -74,20 +74,20 @@ func (x Float) compare(y Number) Value {
 	a := x
 	b := y.toFloat()
 	if a > b {
-		return newInt(1)
+		return int2val(1)
 	} else if a == b {
-		return newInt(0)
+		return int2val(0)
 	} else {
-		return newInt(-1)
+		return int2val(-1)
 	}
 }
 
 func (x String) compare(y String) Value {
 	if x > y {
-		return newInt(1)
+		return int2val(1)
 	} else if x == y {
-		return newInt(0)
+		return int2val(0)
 	} else {
-		return newInt(-1)
+		return int2val(-1)
 	}
 }
