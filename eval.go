@@ -16,7 +16,7 @@ func newFunctionEnv(parent *Env, params Value, args []Value) *Env {
 	env := newEnv()
 	env.parent = parent
 
-	for i, p := range *(params.data.(List).values) {
+	for i, p := range val2slice(params) {
 		name := val2str(p)
 		value := args[i]
 		env.set(name, value)
