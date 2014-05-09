@@ -30,7 +30,9 @@ func main() {
 		os.Exit(1)
 	}
 
-	_, err = fatlisp.Eval(tree)
+	ctx := fatlisp.NewContext()
+
+	_, err = ctx.Eval(tree)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)

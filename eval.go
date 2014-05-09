@@ -2,13 +2,39 @@ package fatlisp
 
 import "fmt"
 
+type Context struct {
+	global *Env
+}
+
 type Env struct {
 	parent *Env
 	defs   map[string]Value
 }
 
+var defaults = map[string]Value{
+	"add":      newFn(add, 2, 2),
+	"subtract": newFn(subtract, 2, 2),
+	"multiply": newFn(multiply, 2, 2),
+	"divide":   newFn(divide, 2, 2),
+	"compare":  newFn(compare, 2, 2),
+	"puts":     newFn(puts, 0, -1),
+	"def":      newForm("def", def, 2, 2, []Type{idType}),
+	"fn":       newForm("fn", fn, 2, 2, []Type{listType}),
+	"if":       newForm("if", _if, 2, 3, []Type{}),
+	"quote":    newForm("quote", quote, 1, 1, []Type{}),
+}
+
+func NewContext() *Context {
+	global := newEnvWithDefs(defaults)
+	return &Context{global}
+}
+
 func newEnv() *Env {
 	return &Env{defs: make(map[string]Value, 1)}
+}
+
+func newEnvWithDefs(defs map[string]Value) *Env {
+	return &Env{defs: defs}
 }
 
 // Construct a new function scope based on parent scope.
@@ -43,23 +69,10 @@ func (e Env) get(val Value) (Value, error) {
 	return v, nil
 }
 
-func Eval(root Value) ([]Value, error) {
-	global := newEnv()
-	global.set("add", newFn(add, 2, 2))
-	global.set("subtract", newFn(subtract, 2, 2))
-	global.set("multiply", newFn(multiply, 2, 2))
-	global.set("divide", newFn(divide, 2, 2))
-	global.set("compare", newFn(compare, 2, 2))
-	global.set("puts", newFn(puts, 0, -1))
-
-	global.set("def", newForm("def", def, 2, 2, []Type{idType}))
-	global.set("fn", newForm("fn", fn, 2, 2, []Type{listType}))
-	global.set("if", newForm("if", _if, 2, 3, []Type{}))
-	global.set("quote", newForm("quote", quote, 1, 1, []Type{}))
-
+func (ctx *Context) Eval(root Value) ([]Value, error) {
 	results := []Value{}
 	for _, v := range val2slice(root) {
-		res, err := eval(v, global)
+		res, err := eval(v, ctx.global)
 		if err != nil {
 			return results, err
 		} else {
